@@ -8,6 +8,9 @@ chroma bars, and the detected key with a confidence read-out.
 
 Builds as **VST3** and **Standalone** (cross-platform: Windows / macOS / Linux).
 
+![Key Detector UI](docs/ui.png)
+
+
 ```
 audio in ─► mono sum ─► FIFO(4096) ─► Hann window ─► FFT ─► |X[k]|
         ─► pitch-class binning (chroma) ─► EMA smoothing
