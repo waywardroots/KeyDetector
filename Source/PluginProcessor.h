@@ -1,0 +1,136 @@
+#pragma once
+
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
+
+#include <array>
+#include <atomic>
+#include <vector>
+
+#include "ChromaKeyDetector.h"
+
+//==============================================================================
+/**
+    KeyDetectorAudioProcessor
+    -------------------------
+    An audio-analysis plugin: it listens to the incoming audio, runs a short-time
+    FFT, folds the spectrum into a 12-bin chroma vector and estimates the musical
+    key by correlating that chroma against the Krumhansl–Schmuckler key profiles.
+
+    The audio is passed through untouched — this is an analyser, so it behaves like
+    an insert effect that also happens to display the detected key.
+
+    Threading:
+      * The FFT + chroma + key estimation run on the audio thread once per
+        `fftSize` samples (an FFT of 4096 points is cheap relative to a block).
+      * Results are *published* into atomics / a spin-locked buffer that the editor
+        polls from a Timer, so the GUI never blocks the audio thread.
+*/
+class KeyDetectorAudioProcessor : public juce::AudioProcessor
+{
+public:
+    //==============================================================================
+    // FFT configuration.
+    //   fftOrder = 12  ->  fftSize = 4096 samples.
+    //   At 48 kHz that is ~11.7 Hz/bin and a new estimate every ~85 ms.
+    //   Rationale: 4096 is a good balance between frequency resolution (enough to
+    //   separate mid/high partials into distinct pitch classes) and update rate.
+    //   Lower notes are resolved via their higher harmonics, which land in
+    //   well-resolved bins — this is why octave-collapsed chroma stays robust even
+    //   though a single 11.7 Hz bin cannot resolve a bass semitone directly.
+    //   Increase to 13 (8192) for finer low-end resolution at a slower update rate.
+    static constexpr int fftOrder = 12;
+    static constexpr int fftSize  = 1 << fftOrder; // 4096
+    static constexpr int numBins  = fftSize / 2;   // 2048 usable magnitude bins
+
+    //==============================================================================
+    KeyDetectorAudioProcessor();
+    ~KeyDetectorAudioProcessor() override;
+
+    //==============================================================================
+    void prepareToPlay (double sampleRate, int samplesPerBlock) override;
+    void releaseResources() override;
+    bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+    void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    using juce::AudioProcessor::processBlock; // keep the double-precision overload visible
+
+    //==============================================================================
+    juce::AudioProcessorEditor* createEditor() override;
+    bool hasEditor() const override { return true; }
+
+    //==============================================================================
+    const juce::String getName() const override { return JucePlugin_Name; }
+
+    bool acceptsMidi() const override  { return false; }
+    bool producesMidi() const override { return false; }
+    bool isMidiEffect() const override { return false; }
+    double getTailLengthSeconds() const override { return 0.0; }
+
+    //==============================================================================
+    int getNumPrograms() override { return 1; }
+    int getCurrentProgram() override { return 0; }
+    void setCurrentProgram (int) override {}
+    const juce::String getProgramName (int) override { return {}; }
+    void changeProgramName (int, const juce::String&) override {}
+
+    //==============================================================================
+    void getStateInformation (juce::MemoryBlock& destData) override;
+    void setStateInformation (const void* data, int sizeInBytes) override;
+
+    //==============================================================================
+    // ---- GUI-facing accessors (lock-free / cheap, safe to call from the editor) --
+
+    /** Latest key estimate, assembled from published atomics. */
+    ChromaKeyDetector::KeyEstimate getKeyEstimate() const;
+
+    /** Snapshot of the latest smoothed chroma vector (12 values, sums to ~1). */
+    std::array<float, 12> getChromaSnapshot() const;
+
+    /** Copy the latest magnitude spectrum into `dest` (resized to numBins).
+        Returns false if the buffer was busy (caller keeps its previous frame). */
+    bool copySpectrum (std::vector<float>& dest) const;
+
+    /** Ask the audio thread to clear the accumulated chroma at the next frame. */
+    void requestReset() noexcept { resetRequested.store (true); }
+
+    double getCurrentSampleRate() const noexcept { return currentSampleRate; }
+
+    juce::AudioProcessorValueTreeState apvts;
+
+private:
+    //==============================================================================
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
+    void pushSampleToFifo (float sample) noexcept;
+    void analyseFrame();
+
+    //==============================================================================
+    juce::dsp::FFT forwardFFT { fftOrder };
+    juce::dsp::WindowingFunction<float> window { (size_t) fftSize,
+                                                 juce::dsp::WindowingFunction<float>::hann };
+
+    std::array<float, fftSize>      fifo {};       // incoming mono samples
+    std::array<float, fftSize * 2>  fftData {};    // real input + FFT workspace
+    int  fifoIndex = 0;
+
+    ChromaKeyDetector detector;
+    double currentSampleRate = 44100.0;
+
+    // Cached parameter handles.
+    std::atomic<float>* smoothingParam = nullptr;
+    std::atomic<float>* freezeParam    = nullptr;
+
+    // ---- Published analysis state (audio thread -> GUI thread) ------------------
+    std::array<std::atomic<float>, 12> publishedChroma {};
+    std::atomic<int>   publishedKeyPc   { 0 };
+    std::atomic<bool>  publishedKeyMinor { false };
+    std::atomic<float> publishedCorr    { 0.0f };
+    std::atomic<float> publishedConf    { 0.0f };
+
+    mutable juce::SpinLock spectrumLock;
+    std::vector<float>     publishedSpectrum;      // numBins magnitudes
+
+    std::atomic<bool> resetRequested { false };
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeyDetectorAudioProcessor)
+};

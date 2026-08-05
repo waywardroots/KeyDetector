@@ -1,0 +1,26 @@
+# Build output
+/build/
+/build-*/
+build/
+cmake-build-*/
+
+# Local JUCE checkout (fetched automatically by CMake)
+/JUCE/
+
+# IDE / OS cruft
+.vs/
+.idea/
+.vscode/
+*.user
+.DS_Store
+Thumbs.db
+
+# Compiled artefacts
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.vst3
+*.component

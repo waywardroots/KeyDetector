@@ -1,0 +1,34 @@
+name: Build Windows VST3
+
+# Builds the plugin on a real Windows + MSVC runner (the officially supported JUCE
+# toolchain) and uploads the .vst3 as a downloadable artifact.  Use this if you
+# don't want to install Visual Studio locally: push to GitHub, open the Actions
+# tab, download the "KeyDetector-VST3-Windows" artifact, unzip, and drop the
+# "Key Detector.vst3" folder into C:\Program Files\Common Files\VST3\.
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:   # lets you run it manually from the Actions tab
+
+jobs:
+  windows-vst3:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (MSVC x64)
+        # ../JUCE isn't present in CI, so the CMake script downloads JUCE 8.0.9
+        # automatically via FetchContent.
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DKEYDETECTOR_BUILD_TESTS=OFF
+
+      - name: Build (Release)
+        run: cmake --build build --config Release --target KeyDetector_VST3
+
+      - name: Upload VST3 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyDetector-VST3-Windows
+          path: build/KeyDetector_artefacts/Release/VST3/Key Detector.vst3
