@@ -3,8 +3,8 @@ REM ============================================================================
 REM  build-windows.bat  --  Build the Key Detector VST3 on Windows with MSVC.
 REM
 REM  Requirements (one-time):
-REM    * Visual Studio 2022 (Community is free) OR "Build Tools for Visual Studio
-REM      2022" with the "Desktop development with C++" workload.
+REM    * Visual Studio 2022 or newer (Community is free) OR "Build Tools for
+REM      Visual Studio" with the "Desktop development with C++" workload.
 REM    * CMake 3.22+  (https://cmake.org/download/ or bundled with Visual Studio)
 REM    * Git          (needed the first time to download JUCE)
 REM
@@ -15,8 +15,9 @@ REM ============================================================================
 setlocal
 
 echo.
-echo === Configuring (Visual Studio 2022, x64) ===
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DKEYDETECTOR_BUILD_TESTS=OFF
+echo === Configuring (auto-detects your installed Visual Studio, x64) ===
+REM No hardcoded "Visual Studio NN" generator, so this works with VS 2022 or newer.
+cmake -B build -A x64 -DKEYDETECTOR_BUILD_TESTS=OFF
 if errorlevel 1 goto :error
 
 echo.
