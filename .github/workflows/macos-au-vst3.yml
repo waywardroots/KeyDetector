@@ -1,0 +1,48 @@
+name: Build macOS AU/VST3
+
+# Builds the plugin on a macOS runner as a Universal binary (Apple Silicon +
+# Intel) in both AudioUnit (.component) and VST3 (.vst3) formats, and uploads them
+# as a downloadable artifact.
+#
+# Note: the plugins are NOT code-signed/notarised. On first load macOS Gatekeeper
+# may block them — right-click the file and choose "Open", or clear the quarantine
+# flag:  xattr -dr com.apple.quarantine "Key Detector.component" "Key Detector.vst3"
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  macos-au-vst3:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure (Xcode, Universal arm64 + x86_64)
+        # ../JUCE isn't present in CI, so CMake downloads JUCE 8.0.9 via FetchContent.
+        run: >
+          cmake -B build -G Xcode
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
+          -DKEYDETECTOR_BUILD_TESTS=OFF
+
+      - name: Build (Release)
+        run: cmake --build build --config Release --target KeyDetector_AU KeyDetector_VST3
+
+      - name: Collect plugins
+        run: |
+          mkdir -p artifact
+          cp -R "build/KeyDetector_artefacts/Release/AU/Key Detector.component" artifact/
+          cp -R "build/KeyDetector_artefacts/Release/VST3/Key Detector.vst3" artifact/
+          echo "=== verify universal (arm64 + x86_64) ==="
+          lipo -archs "artifact/Key Detector.vst3/Contents/MacOS/Key Detector" || true
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyDetector-macOS-AU-VST3
+          path: artifact
+          if-no-files-found: error

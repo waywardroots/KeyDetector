@@ -48,7 +48,8 @@ juce_add_plugin(KeyDetector
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD     FALSE
     VST3_CATEGORIES             "Analyzer" "Fx"
-    FORMATS                     VST3 Standalone
+    AU_MAIN_TYPE                "kAudioUnitType_Effect"
+    FORMATS                     AU VST3 Standalone
     PRODUCT_NAME                "Key Detector")
 
 target_sources(KeyDetector PRIVATE
