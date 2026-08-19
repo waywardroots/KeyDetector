@@ -115,7 +115,7 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
 
     if (chromaSum > 1.0e-4f)
     {
-        keyLabel.setText (est.name(), juce::dontSendNotification);
+        keyLabel.setText (est.noteName(), juce::dontSendNotification);
         detailLabel.setText (
             "correlation " + juce::String (est.correlation, 2)
                 + "    confidence " + juce::String (juce::roundToInt (est.confidence * 100.0f)) + "%",

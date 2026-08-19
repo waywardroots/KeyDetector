@@ -72,6 +72,11 @@ std::string ChromaKeyDetector::KeyEstimate::name() const
     return std::string (kPitchClassNames[pitchClass % 12]) + (isMinor ? " minor" : " major");
 }
 
+std::string ChromaKeyDetector::KeyEstimate::noteName() const
+{
+    return kPitchClassNames[pitchClass % 12];
+}
+
 //==============================================================================
 void ChromaKeyDetector::prepare (double newSampleRate, int newFftSize)
 {

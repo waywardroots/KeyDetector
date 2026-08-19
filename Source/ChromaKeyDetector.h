@@ -34,7 +34,8 @@ public:
         float correlation = 0.0f;   // Pearson correlation with the winning profile (-1..1)
         float confidence  = 0.0f;   // normalised margin over the runner-up key (0..1)
 
-        std::string name() const;   // e.g. "F# minor"
+        std::string name() const;      // e.g. "F# minor"
+        std::string noteName() const;  // just the pitch class, e.g. "F#"  (no mode)
     };
 
     ChromaKeyDetector() = default;
