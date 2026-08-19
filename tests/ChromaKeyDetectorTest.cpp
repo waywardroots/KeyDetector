@@ -24,7 +24,7 @@ namespace
     }
 
     constexpr double kSampleRate = 48000.0;
-    constexpr int    kFftSize    = 4096;
+    constexpr int    kFftSize    = 8192;   // matches the plugin (fine enough to resolve semitones)
     constexpr int    kNumBins    = kFftSize / 2;
 
     // Add a peak (with a couple of harmonics) at a given frequency into a magnitude
@@ -133,8 +133,9 @@ int main()
 
         // A natural-minor scale shares its notes with the relative major (C major),
         // so in major-only mode it must resolve to C major, and never to a minor key.
+        // (Single octave, no doubled tonic, so there is no A emphasis to bias it.)
         const std::vector<double> aMinorScale = {
-            220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00
+            220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00
         };
         for (int frame = 0; frame < 50; ++frame)
         {

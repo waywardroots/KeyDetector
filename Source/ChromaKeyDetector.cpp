@@ -35,6 +35,8 @@ const double ChromaKeyDetector::referenceNoteFrequencies[ChromaKeyDetector::numP
 // 12 minor) and pick the best match — a simple, well-established key finder.
 namespace
 {
+    constexpr double kPi = 3.14159265358979323846;
+
     constexpr double kMajorProfile[12] =
         { 6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88 };
 
@@ -82,40 +84,27 @@ void ChromaKeyDetector::prepare (double newSampleRate, int newFftSize)
 {
     sampleRate = newSampleRate;
     fftSize    = newFftSize;
+    reset();
+}
 
-    const int numBins = fftSize / 2;
-    binToPitchClass.assign ((size_t) numBins, -1);
+void ChromaKeyDetector::nearestNote (double freqHz, int& pitchClass, double& cents)
+{
+    // Find the closest note on the A440 equal-tempered grid (in log-frequency),
+    // then report the deviation from it in cents.
+    int    bestPc  = 0;
+    double bestRef = freqHz;
+    double bestD   = 1.0e300;
 
-    // Assign each bin to the nearest reference note (nearest in log-frequency).
-    for (int k = 1; k < numBins; ++k)
-    {
-        const double f = (double) k * sampleRate / (double) fftSize;
-
-        if (f < fMin || f > fMax)
-            continue;
-
-        const double logF = std::log2 (f);
-
-        int    bestPc   = -1;
-        double bestDist = 1.0e300;
-
-        for (int pc = 0; pc < numPitchClasses; ++pc)
+    for (int pc = 0; pc < numPitchClasses; ++pc)
+        for (int oct = 0; oct < 9; ++oct)
         {
-            for (int oct = 0; oct < 9; ++oct)
-            {
-                const double dist = std::abs (logF - std::log2 (referenceNoteFrequencies[pc][oct]));
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    bestPc   = pc;
-                }
-            }
+            const double r = referenceNoteFrequencies[pc][oct];
+            const double d = std::abs (std::log2 (freqHz / r));
+            if (d < bestD) { bestD = d; bestPc = pc; bestRef = r; }
         }
 
-        binToPitchClass[(size_t) k] = bestPc;
-    }
-
-    reset();
+    pitchClass = bestPc;
+    cents      = 1200.0 * std::log2 (freqHz / bestRef);
 }
 
 void ChromaKeyDetector::reset()
@@ -128,35 +117,74 @@ void ChromaKeyDetector::processSpectrum (const float* magnitudes, int numBins)
     if (frozen)
         return;
 
-    numBins = std::min (numBins, (int) binToPitchClass.size());
+    numBins = std::min (numBins, fftSize / 2);
+    if (numBins < 4)
+        return;
 
-    // 1) Fold the magnitude spectrum into 12 pitch classes (octave-collapsed).
+    const double freqPerBin = sampleRate / (double) fftSize;
+
+    // Peak-picking parameters.
+    constexpr double kEps            = 1.0e-12;
+    constexpr float  kPeakRelThresh  = 0.006f; // peaks must exceed 0.6% of the max bin
+
+    // Global maximum used for the peak threshold (ignore silent frames).
+    float maxMag = 0.0f;
+    for (int k = 1; k < numBins; ++k)
+        maxMag = std::max (maxMag, magnitudes[k]);
+    if (maxMag < 1.0e-6f)
+        return;
+
+    const float threshold = maxMag * kPeakRelThresh;
+
     std::array<double, numPitchClasses> frame {};
     double total = 0.0;
 
-    for (int k = 1; k < numBins; ++k)
+    // Walk the spectrum, keeping only local maxima (spectral peaks).  This ignores
+    // the broadband noise floor between partials, which is what previously diluted
+    // the chroma and made the key hard to read.
+    for (int k = 1; k < numBins - 1; ++k)
     {
-        const int pc = binToPitchClass[(size_t) k];
-        if (pc < 0)
+        const float m = magnitudes[k];
+        if (m < threshold)                       continue;
+        if (! (m > magnitudes[k - 1] && m >= magnitudes[k + 1])) continue;
+
+        // Parabolic (log-magnitude) interpolation -> sub-bin peak location, so the
+        // frequency estimate isn't quantised to the FFT bin grid.
+        const double a = std::log ((double) magnitudes[k - 1] + kEps);
+        const double b = std::log ((double) m + kEps);
+        const double c = std::log ((double) magnitudes[k + 1] + kEps);
+        const double denom = a - 2.0 * b + c;
+        const double delta = std::abs (denom) > kEps ? 0.5 * (a - c) / denom : 0.0;
+
+        const double freq = ((double) k + delta) * freqPerBin;
+        if (freq < fMin || freq > fMax)
             continue;
 
-        const double mag = (double) magnitudes[k];
-        frame[(size_t) pc] += mag;
-        total += mag;
+        const double energy = (double) m;
+
+        // Assign the peak to the nearest note on the A440 grid.  (Peak-thresholding
+        // above already removed the broadband noise floor; a peak that is more than
+        // a quarter-tone from every note is treated as non-tonal and skipped.)
+        int pc; double cents;
+        nearestNote (freq, pc, cents);
+        if (std::abs (cents) >= 50.0)
+            continue;
+
+        frame[(size_t) pc] += energy;
+        total += energy;
     }
 
-    // Ignore essentially-silent frames so quiet gaps don't wash out the estimate.
-    if (total < 1.0e-6)
+    if (total < 1.0e-9)
         return;
 
-    // 2) L1-normalise this frame so loudness changes don't bias the running chroma.
+    // L1-normalise the frame so loudness changes don't bias the running chroma.
     for (auto& v : frame)
         v /= total;
 
-    // 3) Exponential moving average -> a stable chroma that settles over ~1 s.
-    const double a = (double) smoothing;
+    // Exponential moving average -> a stable chroma that settles over ~1 s.
+    const double alpha = (double) smoothing;
     for (int i = 0; i < numPitchClasses; ++i)
-        chroma[(size_t) i] = a * chroma[(size_t) i] + (1.0 - a) * frame[(size_t) i];
+        chroma[(size_t) i] = alpha * chroma[(size_t) i] + (1.0 - alpha) * frame[(size_t) i];
 }
 
 std::array<float, ChromaKeyDetector::numPitchClasses> ChromaKeyDetector::getChroma() const

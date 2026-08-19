@@ -76,10 +76,9 @@ public:
     static const double referenceNoteFrequencies[numPitchClasses][9];
 
 private:
-    // Precomputed map: FFT bin index -> pitch class (0..11), or -1 if the bin falls
-    // outside the analysis band [fMin, fMax].  Each in-band bin is assigned to the
-    // pitch class of the nearest note in referenceNoteFrequencies (log-frequency).
-    std::vector<int> binToPitchClass;
+    // Snap a frequency to the nearest note in referenceNoteFrequencies (A440 grid).
+    // Returns the pitch class (0..11) and the deviation from that note in cents.
+    static void nearestNote (double freqHz, int& pitchClass, double& cents);
 
     std::array<double, numPitchClasses> chroma {}; // smoothed accumulator
     double sampleRate = 44100.0;

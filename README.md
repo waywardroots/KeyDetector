@@ -52,11 +52,14 @@ KeyDetector/
   on a log-frequency axis (interpolating at the low end, peak-aggregating at the
   high end) with fast-attack / slow-release smoothing and a peak-hold trace, so
   there is uniform detail across 20 Hz – 20 kHz.
-- **Chroma binning uses the supplied equal-tempered table (A4 = 440 Hz).** Every
-  in-band FFT bin (55 Hz–5 kHz) is mapped to the **nearest reference note**
-  (in log-frequency) and its magnitude is added to that note's pitch class. Each
-  frame is L1-normalised (so loudness doesn't bias the result) and folded into a
-  running exponential moving average for stability.
+- **Peak-based chroma (Harmonic Pitch-Class Profile).** Instead of dumping every
+  FFT bin into a pitch class (which lets the broadband noise floor between partials
+  dilute the result), only **spectral peaks** (local maxima above a relative
+  threshold) are used. Each peak's frequency is refined with **parabolic
+  interpolation** (sub-bin accuracy), snapped to the nearest note on the supplied
+  A440 table, and rejected if it's more than a quarter-tone from any note. This is
+  what makes the key read cleanly on real material. Each frame is L1-normalised
+  (so loudness doesn't bias it) and folded into a running EMA for stability.
 - **Key-profile correlation (Krumhansl–Schmuckler).** The chroma is correlated
   (Pearson) with all 12 rotations of the major profile and 12 of the minor
   profile; the highest correlation wins. Confidence is the normalised margin over
