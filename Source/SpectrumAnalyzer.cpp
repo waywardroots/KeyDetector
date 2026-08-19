@@ -92,10 +92,8 @@ void SpectrumDisplay::paint (juce::Graphics& g)
 //==============================================================================
 void ChromaDisplay::paint (juce::Graphics& g)
 {
-    // 12 pitch classes.  Two of them get an enharmonic double-label so every name
-    // is shown: pitch class 0 is C (== B#) and pitch class 5 is F (== E#).
     static const char* names[12] =
-        { "C/B#", "C#", "D", "D#", "E", "F/E#", "F#", "G", "G#", "A", "A#", "B" };
+        { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
     auto bounds = getLocalBounds().toFloat();
 
@@ -126,10 +124,8 @@ void ChromaDisplay::paint (juce::Graphics& g)
         g.fillRoundedRectangle (bar, 2.0f);
 
         g.setColour (isTonic ? juce::Colours::white : juce::Colours::white.withAlpha (0.55f));
-        const juce::String label (names[i]);
-        // Shrink the two double-labels ("C/B#", "F/E#") so they fit the bar width.
-        g.setFont (label.length() > 2 ? 10.0f : (isTonic ? 13.0f : 12.0f));
-        g.drawText (label, (int) x, (int) (h + 1.0f), (int) barW, (int) labelH,
+        g.setFont (isTonic ? 13.0f : 12.0f);
+        g.drawText (names[i], (int) x, (int) (h + 1.0f), (int) barW, (int) labelH,
                     juce::Justification::centred, false);
     }
 }
