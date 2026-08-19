@@ -6,6 +6,7 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 {
     addAndMakeVisible (spectrum);
     addAndMakeVisible (chroma);
+    addAndMakeVisible (tuner);
 
     // --- Big detected-key readout ----------------------------------------------
     keyLabel.setJustificationType (juce::Justification::centred);
@@ -41,7 +42,7 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 
     spectrumScratch.reserve ((size_t) KeyDetectorAudioProcessor::numBins);
 
-    setSize (640, 420);
+    setSize (640, 500);
     startTimerHz (30);
 }
 
@@ -89,8 +90,12 @@ void KeyDetectorAudioProcessorEditor::resized()
 
     area.removeFromBottom (10);
 
-    // Chroma bars along the bottom of the plotting area, spectrum fills the rest.
-    chroma.setBounds (area.removeFromBottom (120));
+    // Tuner strip.
+    tuner.setBounds (area.removeFromBottom (68));
+    area.removeFromBottom (10);
+
+    // Chroma bars, spectrum fills the rest.
+    chroma.setBounds (area.removeFromBottom (110));
     area.removeFromBottom (10);
     spectrum.setBounds (area);
 }
@@ -107,6 +112,10 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     const auto est = processorRef.getKeyEstimate();
     chroma.setTonic (est.pitchClass, est.isMinor);
     chroma.repaint();
+
+    // Tuner.
+    tuner.setReading (processorRef.getTunerFrequency(), processorRef.getTunerClarity());
+    tuner.repaint();
 
     // Only show a key once there is meaningful energy in the chroma.
     float chromaSum = 0.0f;

@@ -46,6 +46,10 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
     detector.setMajorOnly (true);   // GUI shows major keys only (never minor)
     detector.setKeyHoldTime (0.7f); // a new key must persist ~0.7 s before it's shown
 
+    pitchDetector.prepare (sampleRate, pitchWindow);
+    pitchDetector.setFrequencyRange (40.0, 1500.0);
+    smoothedFreq = 0.0f;
+
     fifo.fill (0.0f);
     fftData.fill (0.0f);
     writePos     = 0;
@@ -93,6 +97,26 @@ void KeyDetectorAudioProcessor::analyseFrame()
     // most recent write, writePos points at the oldest sample in the ring.
     for (int i = 0; i < fftSize; ++i)
         fftData[(size_t) i] = fifo[(size_t) ((writePos + i) % fftSize)];
+
+    // --- Tuner: monophonic pitch on the most recent, *un-windowed* samples --------
+    {
+        auto pr = pitchDetector.process (fftData.data() + (fftSize - pitchWindow), pitchWindow);
+        publishedClarity.store (pr.clarity);
+
+        if (pr.frequency > 0.0f && pr.clarity >= 0.5f)
+        {
+            // Geometric smoothing of the cents needle, but snap on note changes
+            // (jumps larger than ~a third of a semitone).
+            if (smoothedFreq <= 0.0f
+                || std::abs (std::log2 (pr.frequency / smoothedFreq)) > 0.03)
+                smoothedFreq = pr.frequency;
+            else
+                smoothedFreq = std::exp (0.6f * std::log (smoothedFreq)
+                                       + 0.4f * std::log (pr.frequency));
+
+            publishedFreq.store (smoothedFreq);
+        }
+    }
 
     if (resetRequested.exchange (false))
     {

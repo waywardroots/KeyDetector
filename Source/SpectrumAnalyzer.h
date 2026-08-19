@@ -65,3 +65,29 @@ private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChromaDisplay)
 };
+
+//==============================================================================
+/** A guitar/instrument-style tuner: shows the nearest note name and a cents needle
+    for the current monophonic pitch.  Blank unless a clear single note is playing. */
+class TunerDisplay : public juce::Component
+{
+public:
+    TunerDisplay() = default;
+
+    /** freqHz = detected fundamental (0 if none), clarity = 0..1 periodicity. */
+    void setReading (float freqHz, float clarityIn) noexcept
+    {
+        frequency = freqHz;
+        clarity   = clarityIn < 0.0f ? 0.0f : clarityIn;
+    }
+
+    void paint (juce::Graphics& g) override;
+
+private:
+    float frequency = 0.0f;
+    float clarity   = 0.0f;
+
+    static constexpr float showClarity = 0.6f; // hide the reading below this clarity
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TunerDisplay)
+};

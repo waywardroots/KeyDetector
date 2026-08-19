@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "ChromaKeyDetector.h"
+#include "PitchDetector.h"
 
 //==============================================================================
 /**
@@ -91,6 +92,11 @@ public:
         Returns false if the buffer was busy (caller keeps its previous frame). */
     bool copySpectrum (std::vector<float>& dest) const;
 
+    /** Latest monophonic tuner reading: fundamental frequency in Hz (0 if none)
+        and clarity 0..1 (only trust it when clarity is high, e.g. > 0.6). */
+    float getTunerFrequency() const noexcept { return publishedFreq.load(); }
+    float getTunerClarity()   const noexcept { return publishedClarity.load(); }
+
     /** Ask the audio thread to clear the accumulated chroma at the next frame. */
     void requestReset() noexcept { resetRequested.store (true); }
 
@@ -118,6 +124,11 @@ private:
     ChromaKeyDetector detector;
     double currentSampleRate = 44100.0;
 
+    // Monophonic tuner (YIN).  Runs on the most recent `pitchWindow` samples.
+    static constexpr int pitchWindow = 4096;
+    PitchDetector pitchDetector;
+    float smoothedFreq = 0.0f;   // audio-thread smoothing of the reported pitch
+
     // Cached parameter handles.
     std::atomic<float>* smoothingParam = nullptr;
     std::atomic<float>* freezeParam    = nullptr;
@@ -128,6 +139,8 @@ private:
     std::atomic<bool>  publishedKeyMinor { false };
     std::atomic<float> publishedCorr    { 0.0f };
     std::atomic<float> publishedConf    { 0.0f };
+    std::atomic<float> publishedFreq    { 0.0f };  // tuner: fundamental Hz
+    std::atomic<float> publishedClarity { 0.0f };  // tuner: 0..1
 
     mutable juce::SpinLock spectrumLock;
     std::vector<float>     publishedSpectrum;      // numBins magnitudes

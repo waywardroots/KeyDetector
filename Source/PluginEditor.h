@@ -26,6 +26,7 @@ private:
 
     SpectrumDisplay spectrum;
     ChromaDisplay   chroma;
+    TunerDisplay    tuner;
 
     juce::Label keyLabel;        // big "F# minor"
     juce::Label detailLabel;     // correlation / confidence

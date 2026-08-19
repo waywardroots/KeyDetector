@@ -56,7 +56,8 @@ target_sources(KeyDetector PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/SpectrumAnalyzer.cpp
-    Source/ChromaKeyDetector.cpp)
+    Source/ChromaKeyDetector.cpp
+    Source/PitchDetector.cpp)
 
 target_compile_definitions(KeyDetector PUBLIC
     JUCE_WEB_BROWSER=0            # avoids the webkit/gtk dependency
@@ -84,4 +85,10 @@ if(KEYDETECTOR_BUILD_TESTS)
         Source/ChromaKeyDetector.cpp)
     target_include_directories(ChromaKeyDetectorTest PRIVATE Source)
     add_test(NAME ChromaKeyDetectorTest COMMAND ChromaKeyDetectorTest)
+
+    add_executable(PitchDetectorTest
+        tests/PitchDetectorTest.cpp
+        Source/PitchDetector.cpp)
+    target_include_directories(PitchDetectorTest PRIVATE Source)
+    add_test(NAME PitchDetectorTest COMMAND PitchDetectorTest)
 endif()

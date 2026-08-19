@@ -1,4 +1,5 @@
 #include "SpectrumAnalyzer.h"
+#include "PitchDetector.h"
 
 #include <cmath>
 
@@ -206,5 +207,91 @@ void ChromaDisplay::paint (juce::Graphics& g)
         g.setFont (isTonic ? 13.0f : 12.0f);
         g.drawText (names[i], (int) x, (int) (h + 1.0f), (int) barW, (int) labelH,
                     juce::Justification::centred, false);
+    }
+}
+
+//==============================================================================
+void TunerDisplay::paint (juce::Graphics& g)
+{
+    auto bounds = getLocalBounds().toFloat();
+
+    g.setColour (juce::Colour (0xff141821));
+    g.fillRoundedRectangle (bounds, 4.0f);
+
+    auto area = bounds.reduced (8.0f);
+
+    // No confident single note -> prompt and bail.
+    if (frequency <= 0.0f || clarity < showClarity)
+    {
+        g.setColour (juce::Colours::white.withAlpha (0.35f));
+        g.setFont (14.0f);
+        g.drawText ("TUNER  -  play a single note", area, juce::Justification::centred, false);
+        return;
+    }
+
+    int midi, pc, oct; double cents;
+    PitchDetector::frequencyToNote ((double) frequency, midi, pc, oct, cents);
+    const juce::String note = PitchDetector::noteName (midi);
+
+    const bool  inTune = std::abs (cents) <= 5.0;
+    const bool  near   = std::abs (cents) <= 15.0;
+    const juce::Colour tuneCol = inTune ? juce::Colour (0xff3ddc84)
+                                        : near ? juce::Colour (0xffffc857)
+                                               : juce::Colour (0xffe0685a);
+
+    // --- Note name on the left ---------------------------------------------------
+    auto noteArea = area.removeFromLeft (96.0f);
+    g.setColour (tuneCol);
+    g.setFont (juce::Font (juce::FontOptions (40.0f, juce::Font::bold)));
+    g.drawText (note, noteArea, juce::Justification::centred, false);
+
+    // --- Cents needle on the right ----------------------------------------------
+    auto meter = area.reduced (6.0f, 0.0f);
+    const float cx = meter.getCentreX();
+    const float half = meter.getWidth() * 0.5f - 6.0f;
+    const float midY = meter.getCentreY();
+
+    // Scale ticks at -50, -25, 0, +25, +50 cents.
+    g.setFont (10.0f);
+    for (int t = -50; t <= 50; t += 25)
+    {
+        const float x = cx + (float) t / 50.0f * half;
+        const bool  centre = (t == 0);
+        g.setColour (juce::Colours::white.withAlpha (centre ? 0.5f : 0.18f));
+        g.drawVerticalLine ((int) x, midY - (centre ? 14.0f : 9.0f), midY + (centre ? 14.0f : 9.0f));
+        g.setColour (juce::Colours::white.withAlpha (0.30f));
+        g.drawText (juce::String (t > 0 ? "+" : "") + juce::String (t),
+                    (int) x - 16, (int) (midY + 15.0f), 32, 12, juce::Justification::centred, false);
+    }
+
+    // Baseline.
+    g.setColour (juce::Colours::white.withAlpha (0.12f));
+    g.drawHorizontalLine ((int) midY, meter.getX(), meter.getRight());
+
+    // Needle.
+    const float nx = cx + (float) juce::jlimit (-50.0, 50.0, cents) / 50.0f * half;
+    g.setColour (tuneCol);
+    juce::Path needle;
+    needle.addTriangle (nx, midY - 16.0f, nx - 6.0f, midY - 28.0f, nx + 6.0f, midY - 28.0f);
+    g.fillPath (needle);
+    g.fillRect (juce::Rectangle<float> (nx - 1.0f, midY - 16.0f, 2.0f, 30.0f));
+
+    // Cents + frequency read-outs.
+    g.setColour (tuneCol);
+    g.setFont (juce::Font (juce::FontOptions (14.0f, juce::Font::bold)));
+    g.drawText ((cents >= 0.0 ? "+" : "") + juce::String (cents, 1) + " cents",
+                meter.removeFromTop (16).toNearestInt(), juce::Justification::centred, false);
+
+    g.setColour (juce::Colours::white.withAlpha (0.45f));
+    g.setFont (11.0f);
+    g.drawText (juce::String (frequency, 1) + " Hz",
+                meter.removeFromBottom (14).toNearestInt(), juce::Justification::centredRight, false);
+
+    if (inTune)
+    {
+        g.setColour (juce::Colour (0xff3ddc84));
+        g.setFont (juce::Font (juce::FontOptions (11.0f, juce::Font::bold)));
+        g.drawText ("IN TUNE", meter.removeFromBottom (14).toNearestInt(),
+                    juce::Justification::centredLeft, false);
     }
 }

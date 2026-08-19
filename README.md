@@ -3,18 +3,25 @@
 A JUCE / C++ audio plugin that listens to incoming audio, computes its short-time
 FFT spectrum, folds it into a 12-bin **chroma** vector (pitch-class energy) and
 estimates the musical **key** by correlating the chroma against the
-Krumhansl–Schmuckler key profiles. The UI shows a live spectrum analyser, the
-chroma bars, and the detected key with a confidence read-out.
+Krumhansl–Schmuckler key profiles. It also includes a **monophonic tuner** (YIN
+pitch detection) that shows the nearest note and cents deviation when a single note
+is played. The UI shows a live spectrum analyser, the chroma bars, the tuner, and
+the detected key with a confidence read-out.
 
-Builds as **VST3** and **Standalone** (cross-platform: Windows / macOS / Linux).
+Builds as **VST3**, **AU** (macOS) and **Standalone** (Windows / macOS / Linux).
 
 ![Key Detector UI](docs/ui.png)
 
+The tuner lights up when a single note is played (it stays idle on full mixes):
+
+![Tuner](docs/tuner.png)
+
 
 ```
-audio in ─► mono sum ─► FIFO(4096) ─► Hann window ─► FFT ─► |X[k]|
-        ─► pitch-class binning (chroma) ─► EMA smoothing
-        ─► Krumhansl–Schmuckler correlation (24 keys) ─► detected key
+audio in ─► mono sum ─► FIFO(8192, 75% overlap) ─► Hann ─► FFT ─► |X[k]|
+        ─► peak-picking + parabolic interp ─► 12-bin chroma ─► EMA
+        ─► Krumhansl–Schmuckler correlation (24 keys) + hysteresis ─► key
+        └► YIN autocorrelation on the same buffer ─► note + cents (tuner)
 ```
 
 ## Instrument vs. effect (design note)
@@ -33,11 +40,13 @@ KeyDetector/
 ├── CMakeLists.txt              # JUCE plugin target + standalone DSP test
 ├── Source/
 │   ├── ChromaKeyDetector.h/.cpp  # DSP core (NO JUCE dependency, unit-testable)
+│   ├── PitchDetector.h/.cpp      # YIN monophonic pitch detector (tuner, no JUCE)
 │   ├── PluginProcessor.h/.cpp    # audio thread: FIFO → FFT → chroma → publish
 │   ├── PluginEditor.h/.cpp       # GUI + 30 Hz timer polling the processor
-│   └── SpectrumAnalyzer.h/.cpp   # spectrum + chroma display components
+│   └── SpectrumAnalyzer.h/.cpp   # spectrum + chroma + tuner display components
 └── tests/
-    └── ChromaKeyDetectorTest.cpp # pure-C++17 sanity tests (ctest)
+    ├── ChromaKeyDetectorTest.cpp # pure-C++17 sanity tests (ctest)
+    └── PitchDetectorTest.cpp     # YIN accuracy tests (ctest)
 ```
 
 ## Algorithmic choices (and why)
@@ -70,6 +79,12 @@ KeyDetector/
   a new key only replaces the current one after it has been the instantaneous
   winner for ~0.7 s of continuous frames, so momentary frames can't make the
   readout flicker while genuine key changes still register within about a second.
+- **Tuner (YIN).** A separate time-domain **YIN** autocorrelation detector runs on
+  the same buffer to estimate the monophonic fundamental to within a few cents and
+  without octave errors. Its "clarity" (periodicity) score gates the display, so
+  the tuner only shows a note when a single note is actually playing and stays idle
+  on chords / full mixes. The frequency is mapped to the nearest note (A440, equal
+  temperament) and shown as a note name + a cents needle.
 
 ## Controls
 
