@@ -58,6 +58,10 @@ public:
     /** While frozen, processSpectrum() is a no-op so the current result is held. */
     void setFrozen (bool shouldFreeze) noexcept { frozen = shouldFreeze; }
 
+    /** When true, estimateKey() only considers the 12 major keys (never reports a
+        minor key).  The GUI uses this so the readout is always a major key. */
+    void setMajorOnly (bool shouldRestrict) noexcept { majorOnly = shouldRestrict; }
+
     /** The current smoothed, L1-normalised chroma vector (sums to ~1, or all-zero
         before any non-silent frame has been seen). */
     std::array<float, numPitchClasses> getChroma() const;
@@ -81,6 +85,7 @@ private:
     int    fftSize    = 4096;
     float  smoothing  = 0.85f;
     bool   frozen     = false;
+    bool   majorOnly  = false;
 
     // Analysis band.  We ignore sub-bass rumble below ~A1 and content above ~5 kHz;
     // the latter mostly holds high harmonics/noise that add little to pitch-class

@@ -205,6 +205,9 @@ ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateKey() const
             rotated[j] = kMajorProfile[(j - key + 12) % 12];
         consider (pearson (c, rotated, 12), key, false);
 
+        if (majorOnly)
+            continue;   // GUI mode: never report a minor key
+
         for (int j = 0; j < 12; ++j)
             rotated[j] = kMinorProfile[(j - key + 12) % 12];
         consider (pearson (c, rotated, 12), key, true);

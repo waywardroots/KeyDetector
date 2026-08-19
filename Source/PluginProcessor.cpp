@@ -41,6 +41,7 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     detector.prepare (sampleRate, fftSize);
+    detector.setMajorOnly (true); // GUI shows major keys only (never minor)
 
     fifo.fill (0.0f);
     fftData.fill (0.0f);

@@ -124,6 +124,31 @@ int main()
         check (argmax == 9, "440 Hz maps to pitch class A (index 9)");
     }
 
+    // --- 5) Major-only mode (used by the GUI) never reports a minor key ----------
+    {
+        ChromaKeyDetector det;
+        det.prepare (kSampleRate, kFftSize);
+        det.setSmoothing (0.5f);
+        det.setMajorOnly (true);
+
+        // A natural-minor scale shares its notes with the relative major (C major),
+        // so in major-only mode it must resolve to C major, and never to a minor key.
+        const std::vector<double> aMinorScale = {
+            220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00
+        };
+        for (int frame = 0; frame < 50; ++frame)
+        {
+            std::vector<float> mags ((size_t) kNumBins, 0.0f);
+            for (double f : aMinorScale)
+                addTone (mags, f, 1.0f);
+            det.processSpectrum (mags.data(), kNumBins);
+        }
+        auto est = det.estimateKey();
+        std::printf ("A-minor notes (major-only) -> %s (r=%.3f)\n", est.name().c_str(), est.correlation);
+        check (! est.isMinor, "major-only mode never reports a minor key");
+        check (est.pitchClass == 0, "A-minor notes resolve to relative major (C) in major-only mode");
+    }
+
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",
                  failures, failures == 1 ? "" : "s");
