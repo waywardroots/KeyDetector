@@ -6,24 +6,41 @@
 #include <vector>
 
 //==============================================================================
-/** Draws an FFT magnitude spectrum on a log-frequency x-axis and a dB y-axis. */
+/** A detailed FFT spectrum display.
+
+    The raw magnitude spectrum is resampled into one column per horizontal pixel
+    on a log-frequency axis, so every part of the range gets uniform detail (low
+    frequencies are interpolated; high frequencies are peak-aggregated across the
+    many bins that fall in each column).  Each column has fast-attack / slow-release
+    smoothing plus a slowly-falling peak-hold trace, and the view has dB + frequency
+    grids. */
 class SpectrumDisplay : public juce::Component
 {
 public:
     SpectrumDisplay() = default;
 
-    /** Give it the latest linear magnitudes (bin k = k * sampleRate / (2*numBins)). */
+    /** Feed the latest linear magnitudes (bin k = k * sampleRate / (2*numBins)).
+        This advances the per-column smoothing/peak state and repaints. */
     void setSpectrum (const std::vector<float>& magnitudes, double sampleRate);
 
     void paint (juce::Graphics& g) override;
+    void resized() override;
 
 private:
-    std::vector<float> mags;          // latest magnitudes
+    void rebuildColumns();                 // resample mags -> per-pixel columns
+    float freqToX (float hz) const noexcept;
+    float dbToY   (float db) const noexcept;
+
+    std::vector<float> mags;               // latest raw magnitudes
     double sampleRate = 44100.0;
 
-    static constexpr float minFreq = 30.0f;    // Hz, low edge of the display
-    static constexpr float maxFreq = 8000.0f;  // Hz, high edge
-    static constexpr float minDb   = -90.0f;
+    std::vector<float> colSmooth;          // per-pixel smoothed magnitude (linear)
+    std::vector<float> colPeak;            // per-pixel peak-hold magnitude (linear)
+    float refPeak = 1.0e-6f;               // running normalisation reference
+
+    static constexpr float minFreq = 20.0f;
+    static constexpr float maxFreq = 20000.0f;
+    static constexpr float minDb   = -100.0f;
     static constexpr float maxDb   =  0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectrumDisplay)

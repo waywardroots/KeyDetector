@@ -31,17 +31,18 @@ class KeyDetectorAudioProcessor : public juce::AudioProcessor
 public:
     //==============================================================================
     // FFT configuration.
-    //   fftOrder = 12  ->  fftSize = 4096 samples.
-    //   At 48 kHz that is ~11.7 Hz/bin and a new estimate every ~85 ms.
-    //   Rationale: 4096 is a good balance between frequency resolution (enough to
-    //   separate mid/high partials into distinct pitch classes) and update rate.
-    //   Lower notes are resolved via their higher harmonics, which land in
-    //   well-resolved bins — this is why octave-collapsed chroma stays robust even
-    //   though a single 11.7 Hz bin cannot resolve a bass semitone directly.
-    //   Increase to 13 (8192) for finer low-end resolution at a slower update rate.
-    static constexpr int fftOrder = 12;
-    static constexpr int fftSize  = 1 << fftOrder; // 4096
-    static constexpr int numBins  = fftSize / 2;   // 2048 usable magnitude bins
+    //   fftOrder = 13  ->  fftSize = 8192 samples.
+    //   At 48 kHz that is ~5.9 Hz/bin.  We analyse with 75% overlap (hopSize =
+    //   fftSize/4), so a new spectrum/key frame is produced every ~43 ms even
+    //   though the window is ~171 ms long.  The larger window sharpens low-end
+    //   resolution (bass notes / their partials land in distinct bins) while the
+    //   overlap keeps the display responsive and gives the key detector 4x more
+    //   frames to average.  Lower notes are also reinforced by their higher
+    //   harmonics, which is why octave-collapsed chroma stays robust.
+    static constexpr int fftOrder = 13;
+    static constexpr int fftSize  = 1 << fftOrder; // 8192
+    static constexpr int numBins  = fftSize / 2;   // 4096 usable magnitude bins
+    static constexpr int hopSize  = fftSize / 4;   // 75% overlap
 
     //==============================================================================
     KeyDetectorAudioProcessor();
@@ -109,9 +110,10 @@ private:
     juce::dsp::WindowingFunction<float> window { (size_t) fftSize,
                                                  juce::dsp::WindowingFunction<float>::hann };
 
-    std::array<float, fftSize>      fifo {};       // incoming mono samples
+    std::array<float, fftSize>      fifo {};       // circular buffer of mono samples
     std::array<float, fftSize * 2>  fftData {};    // real input + FFT workspace
-    int  fifoIndex = 0;
+    int  writePos      = 0;                        // next write index into fifo
+    int  hopCountdown  = fftSize;                  // samples until next analysis frame
 
     ChromaKeyDetector detector;
     double currentSampleRate = 44100.0;

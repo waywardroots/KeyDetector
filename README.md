@@ -42,13 +42,16 @@ KeyDetector/
 
 ## Algorithmic choices (and why)
 
-- **FFT size = 4096 (order 12), Hann window.** ~11.7 Hz/bin @ 48 kHz and a new
-  estimate every ~85 ms — a good resolution/latency trade-off. The Hann window
-  suppresses spectral leakage so pitch energy stays in the right bins. Low notes
-  aren't resolved directly by a single bin, but their **harmonics** land in
-  well-resolved higher bins and reinforce the correct pitch class, which is what
-  makes octave-collapsed chroma robust. Bump to order 13/14 for finer bass
-  resolution at a slower update rate.
+- **FFT size = 8192 (order 13), Hann window, 75% overlap.** ~5.9 Hz/bin @ 48 kHz
+  for sharp low-end resolution, with a new frame every ~43 ms (hop = 2048) so the
+  display stays responsive and the key detector gets 4x more frames to average.
+  The Hann window suppresses spectral leakage so pitch energy stays in the right
+  bins. Low notes are reinforced by their **harmonics** in well-resolved higher
+  bins, which keeps octave-collapsed chroma robust.
+- **Spectrum display** resamples the magnitude spectrum into one column per pixel
+  on a log-frequency axis (interpolating at the low end, peak-aggregating at the
+  high end) with fast-attack / slow-release smoothing and a peak-hold trace, so
+  there is uniform detail across 20 Hz – 20 kHz.
 - **Chroma binning uses the supplied equal-tempered table (A4 = 440 Hz).** Every
   in-band FFT bin (55 Hz–5 kHz) is mapped to the **nearest reference note**
   (in log-frequency) and its magnitude is added to that note's pitch class. Each

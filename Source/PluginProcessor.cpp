@@ -45,7 +45,8 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
 
     fifo.fill (0.0f);
     fftData.fill (0.0f);
-    fifoIndex = 0;
+    writePos     = 0;
+    hopCountdown = fftSize; // wait for one full window before the first analysis
 
     for (auto& c : publishedChroma)
         c.store (0.0f);
@@ -70,19 +71,26 @@ bool KeyDetectorAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 //==============================================================================
 void KeyDetectorAudioProcessor::pushSampleToFifo (float sample) noexcept
 {
-    if (fifoIndex == fftSize)
-    {
-        // Frame complete: copy into the FFT workspace and analyse.
-        std::copy (fifo.begin(), fifo.end(), fftData.begin());
-        analyseFrame();
-        fifoIndex = 0;
-    }
+    // Circular write.  After the buffer is first filled we run an analysis every
+    // hopSize samples (overlapping windows), which is what makes the display update
+    // smoothly at high FFT sizes.
+    fifo[(size_t) writePos] = sample;
+    writePos = (writePos + 1) % fftSize;
 
-    fifo[(size_t) fifoIndex++] = sample;
+    if (--hopCountdown <= 0)
+    {
+        analyseFrame();
+        hopCountdown = hopSize;
+    }
 }
 
 void KeyDetectorAudioProcessor::analyseFrame()
 {
+    // Reconstruct the last fftSize samples in time order (oldest first).  After the
+    // most recent write, writePos points at the oldest sample in the ring.
+    for (int i = 0; i < fftSize; ++i)
+        fftData[(size_t) i] = fifo[(size_t) ((writePos + i) % fftSize)];
+
     if (resetRequested.exchange (false))
     {
         detector.reset();
