@@ -1,6 +1,8 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+#include <cmath>
+
 //==============================================================================
 KeyDetectorAudioProcessor::KeyDetectorAudioProcessor()
     : AudioProcessor (BusesProperties()
@@ -41,7 +43,8 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
 {
     currentSampleRate = sampleRate;
     detector.prepare (sampleRate, fftSize);
-    detector.setMajorOnly (true); // GUI shows major keys only (never minor)
+    detector.setMajorOnly (true);   // GUI shows major keys only (never minor)
+    detector.setKeyHoldTime (0.7f); // a new key must persist ~0.7 s before it's shown
 
     fifo.fill (0.0f);
     fftData.fill (0.0f);
@@ -98,8 +101,14 @@ void KeyDetectorAudioProcessor::analyseFrame()
             c.store (0.0f);
     }
 
-    // Apply live parameter values.
-    detector.setSmoothing (smoothingParam != nullptr ? smoothingParam->load() : 0.85f);
+    // Apply live parameter values.  The "smoothing" knob (0..1) is mapped to a
+    // *time constant* rather than a raw per-frame coefficient, so the amount of
+    // averaging doesn't change when the frame/overlap rate changes.
+    const double hopSeconds = (double) hopSize / currentSampleRate;
+    const float  smoothing01 = smoothingParam != nullptr ? smoothingParam->load() : 0.85f;
+    const double tau = 0.1 + (double) smoothing01 * 3.9;              // 0.1 s .. ~4 s
+    const double alpha = std::exp (-hopSeconds / tau);               // EMA coefficient
+    detector.setSmoothing ((float) alpha);
     detector.setFrozen   (freezeParam != nullptr && freezeParam->load() > 0.5f);
 
     // 1) Window the frame (Hann) to reduce spectral leakage, then take the FFT.
@@ -110,7 +119,7 @@ void KeyDetectorAudioProcessor::analyseFrame()
     // 2) Update chroma + key estimate from the magnitude spectrum.
     detector.processSpectrum (fftData.data(), numBins);
 
-    const auto est    = detector.estimateKey();
+    const auto est    = detector.estimateStableKey (hopSeconds);
     const auto chroma = detector.getChroma();
 
     // 3) Publish for the GUI (lock-free where possible).

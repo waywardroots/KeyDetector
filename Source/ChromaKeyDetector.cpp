@@ -110,6 +110,9 @@ void ChromaKeyDetector::nearestNote (double freqHz, int& pitchClass, double& cen
 void ChromaKeyDetector::reset()
 {
     chroma.fill (0.0);
+    stablePc  = -1;
+    candPc    = -1;
+    candCount = 0;
 }
 
 void ChromaKeyDetector::processSpectrum (const float* magnitudes, int numBins)
@@ -202,13 +205,22 @@ std::array<float, ChromaKeyDetector::numPitchClasses> ChromaKeyDetector::getChro
     return out;
 }
 
-ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateKey() const
+double ChromaKeyDetector::keyCorrelation (int key, bool minor) const
 {
-    // Work on a local double copy of the chroma.
     double c[12];
     for (int i = 0; i < 12; ++i)
         c[i] = chroma[(size_t) i];
 
+    const double* profile = minor ? kMinorProfile : kMajorProfile;
+    double rotated[12];
+    for (int j = 0; j < 12; ++j)
+        rotated[j] = profile[(j - key + 12) % 12];
+
+    return pearson (c, rotated, 12);
+}
+
+ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateKey() const
+{
     KeyEstimate best;
     double bestCorr   = -2.0;
     double secondCorr = -2.0;
@@ -230,20 +242,14 @@ ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateKey() const
 
     // Correlate against every rotation of both templates.  Rotating the profile so
     // its tonic lands on pitch class `key` is the same as testing that key.
-    double rotated[12];
-
     for (int key = 0; key < 12; ++key)
     {
-        for (int j = 0; j < 12; ++j)
-            rotated[j] = kMajorProfile[(j - key + 12) % 12];
-        consider (pearson (c, rotated, 12), key, false);
+        consider (keyCorrelation (key, false), key, false);
 
         if (majorOnly)
             continue;   // GUI mode: never report a minor key
 
-        for (int j = 0; j < 12; ++j)
-            rotated[j] = kMinorProfile[(j - key + 12) % 12];
-        consider (pearson (c, rotated, 12), key, true);
+        consider (keyCorrelation (key, true), key, true);
     }
 
     best.correlation = (float) bestCorr;
@@ -254,4 +260,51 @@ ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateKey() const
     best.confidence = (float) std::clamp (margin / 0.15, 0.0, 1.0);
 
     return best;
+}
+
+ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateStableKey (double frameSeconds)
+{
+    const KeyEstimate raw = estimateKey();
+
+    // Hysteresis / debounce: a new key only takes over once it has been the
+    // instantaneous winner for `keyHoldSeconds` of continuous frames.  Momentary
+    // single-frame winners can't flip the reported key, so it stops jumping while
+    // still following genuine key changes within ~1 s.
+    const int holdFrames = std::max (1, (int) std::lround (keyHoldSeconds / std::max (1.0e-4, frameSeconds)));
+
+    if (stablePc < 0)
+    {
+        // First estimate: adopt immediately.
+        stablePc    = raw.pitchClass;
+        stableMinor = raw.isMinor;
+        candPc      = raw.pitchClass;
+        candMinor   = raw.isMinor;
+        candCount   = 0;
+    }
+    else if (raw.pitchClass == stablePc && raw.isMinor == stableMinor)
+    {
+        candCount = 0; // incumbent still winning; drop any pending challenger
+        candPc    = stablePc;
+        candMinor = stableMinor;
+    }
+    else
+    {
+        if (raw.pitchClass == candPc && raw.isMinor == candMinor)
+            ++candCount;
+        else { candPc = raw.pitchClass; candMinor = raw.isMinor; candCount = 1; }
+
+        if (candCount >= holdFrames)
+        {
+            stablePc    = candPc;
+            stableMinor = candMinor;
+            candCount   = 0;
+        }
+    }
+
+    KeyEstimate out;
+    out.pitchClass  = stablePc;
+    out.isMinor     = stableMinor;
+    out.correlation = (float) keyCorrelation (stablePc, stableMinor);
+    out.confidence  = raw.confidence;
+    return out;
 }

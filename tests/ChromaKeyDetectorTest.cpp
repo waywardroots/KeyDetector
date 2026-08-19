@@ -150,6 +150,50 @@ int main()
         check (est.pitchClass == 0, "A-minor notes resolve to relative major (C) in major-only mode");
     }
 
+    // --- 6) Key hysteresis: a momentary winner must not flip the reported key ----
+    {
+        ChromaKeyDetector det;
+        det.prepare (kSampleRate, kFftSize);
+        det.setSmoothing (0.0f);       // react instantly so we control the chroma directly
+        det.setKeyHoldTime (0.5f);     // require 0.5 s of persistence to switch
+
+        const double frameSeconds = 0.043; // ~ plugin hop time
+        const int    needed = (int) std::lround (0.5 / frameSeconds); // ~12 frames
+
+        auto feed = [&] (const std::vector<double>& notes)
+        {
+            std::vector<float> mags ((size_t) kNumBins, 0.0f);
+            for (double f : notes)
+                addTone (mags, f, 1.0f);
+            det.processSpectrum (mags.data(), kNumBins);
+        };
+
+        const std::vector<double> cChord = { 261.63, 329.63, 392.00 };            // C major
+        const std::vector<double> gChord = { 196.00, 246.94, 293.66, 392.00 };    // G major
+
+        // Establish C as the stable key.
+        for (int i = 0; i < 30; ++i) { feed (cChord); det.estimateStableKey (frameSeconds); }
+        const bool startedC = (det.estimateStableKey (frameSeconds).pitchClass == 0);
+
+        // A single G frame must NOT change the reported key.
+        feed (gChord);
+        const bool heldAfterBlip = (det.estimateStableKey (frameSeconds).pitchClass == 0);
+
+        // A sustained run of G frames SHOULD eventually switch it to G.
+        bool switched = false;
+        for (int i = 0; i < needed + 5; ++i)
+        {
+            feed (gChord);
+            if (det.estimateStableKey (frameSeconds).pitchClass == 7) { switched = true; break; }
+        }
+
+        std::printf ("hysteresis: startedC=%d heldAfterBlip=%d switched=%d\n",
+                     startedC, heldAfterBlip, switched);
+        check (startedC,       "hysteresis establishes the initial (C) key");
+        check (heldAfterBlip,  "a single-frame G blip does not flip the reported key");
+        check (switched,       "a sustained G run does switch the reported key");
+    }
+
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",
                  failures, failures == 1 ? "" : "s");

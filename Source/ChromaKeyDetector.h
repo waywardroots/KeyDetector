@@ -70,6 +70,15 @@ public:
     /** Correlate the current chroma against all 24 key profiles and return the best. */
     KeyEstimate estimateKey() const;
 
+    /** Like estimateKey(), but with hysteresis: the returned key only changes once a
+        new candidate has been the instantaneous winner for `keyHoldTime` seconds of
+        continuous frames.  `frameSeconds` is the time between analysis frames (hop
+        size / sample rate).  This is what the plugin uses so the readout is steady. */
+    KeyEstimate estimateStableKey (double frameSeconds);
+
+    /** How long a new key must persist before it is reported (default 0.6 s). */
+    void setKeyHoldTime (float seconds) noexcept { keyHoldSeconds = seconds; }
+
     /** Exact equal-tempered note frequencies (Hz, A4 = 440).  Row = pitch class
         (0 = C … 11 = B), column = octave (0..8).  These are the reference
         frequencies used to assign each FFT bin to a pitch class. */
@@ -80,12 +89,23 @@ private:
     // Returns the pitch class (0..11) and the deviation from that note in cents.
     static void nearestNote (double freqHz, int& pitchClass, double& cents);
 
+    // Pearson correlation of the current chroma with one key profile.
+    double keyCorrelation (int key, bool minor) const;
+
     std::array<double, numPitchClasses> chroma {}; // smoothed accumulator
     double sampleRate = 44100.0;
     int    fftSize    = 4096;
     float  smoothing  = 0.85f;
     bool   frozen     = false;
     bool   majorOnly  = false;
+
+    // Key hysteresis state (used by estimateStableKey).
+    int    stablePc      = -1;
+    bool   stableMinor   = false;
+    int    candPc        = -1;
+    bool   candMinor     = false;
+    int    candCount     = 0;
+    float  keyHoldSeconds = 0.6f;
 
     // Analysis band.  We ignore sub-bass rumble below ~A1 and content above ~5 kHz;
     // the latter mostly holds high harmonics/noise that add little to pitch-class

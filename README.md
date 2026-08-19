@@ -64,6 +64,12 @@ KeyDetector/
   (Pearson) with all 12 rotations of the major profile and 12 of the minor
   profile; the highest correlation wins. Confidence is the normalised margin over
   the runner-up. This is a compact, well-established, tonal-hierarchy key finder.
+- **Stability.** The chroma smoothing is defined by a **time constant** (the
+  Smoothing knob maps to ~0.1–4 s), so the amount of averaging is independent of
+  the FFT overlap/frame rate. On top of that, the reported key uses **hysteresis**:
+  a new key only replaces the current one after it has been the instantaneous
+  winner for ~0.7 s of continuous frames, so momentary frames can't make the
+  readout flicker while genuine key changes still register within about a second.
 
 ## Controls
 
