@@ -233,7 +233,7 @@ void TunerDisplay::paint (juce::Graphics& g)
 
     int midi, pc, oct; double cents;
     PitchDetector::frequencyToNote ((double) frequency, midi, pc, oct, cents);
-    const juce::String note = PitchDetector::noteName (midi);
+    const juce::String note = PitchDetector::pitchClassName (pc); // note only, no octave
 
     const bool  inTune = std::abs (cents) <= 5.0;
     const bool  close  = std::abs (cents) <= 15.0;

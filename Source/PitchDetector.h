@@ -54,6 +54,9 @@ public:
     /** e.g. midi 69 -> "A4". */
     static std::string noteName (int midiNote);
 
+    /** Just the pitch class, e.g. pitch class 9 -> "A" (no octave). */
+    static std::string pitchClassName (int pitchClass);
+
 private:
     double sampleRate = 44100.0;
     double minFreq    = 40.0;

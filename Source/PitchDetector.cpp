@@ -124,3 +124,10 @@ std::string PitchDetector::noteName (int midiNote)
     const int oct = midiNote / 12 - 1;
     return std::string (names[pc]) + std::to_string (oct);
 }
+
+std::string PitchDetector::pitchClassName (int pitchClass)
+{
+    static const char* names[12] =
+        { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+    return names[((pitchClass % 12) + 12) % 12];
+}
