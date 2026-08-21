@@ -9,6 +9,7 @@
 
 #include "ChromaKeyDetector.h"
 #include "PitchDetector.h"
+#include "TempoEstimator.h"
 
 //==============================================================================
 /**
@@ -106,8 +107,11 @@ public:
 
     double getCurrentSampleRate() const noexcept { return currentSampleRate; }
 
-    /** Host transport tempo (BPM) as reported by the DAW, or 0 if unavailable. */
+    /** Tempo (BPM) estimated from the audio on this channel, or 0 if none yet. */
     double getBpm() const noexcept { return publishedBpm.load(); }
+
+    /** Confidence (0..1) of the audio tempo estimate; low = no clear pulse. */
+    float getBpmConfidence() const noexcept { return publishedBpmConf.load(); }
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -140,6 +144,10 @@ private:
     ChromaKeyDetector detector;
     double currentSampleRate = 44100.0;
 
+    // Audio-based tempo (BPM) estimation from the channel's signal.
+    TempoEstimator      tempoEstimator;
+    std::vector<float>  monoScratch;
+
     // Monophonic tuner (YIN).  Runs on the most recent `pitchWindow` samples.
     static constexpr int pitchWindow = 4096;
     PitchDetector pitchDetector;
@@ -167,7 +175,8 @@ private:
     std::atomic<float> publishedFreq    { 0.0f };  // tuner: fundamental Hz
     std::atomic<float> publishedClarity { 0.0f };  // tuner: 0..1
     std::atomic<bool>  publishedTunerIsPitch { true }; // pitch (YIN) vs peak fallback
-    std::atomic<double> publishedBpm { 0.0 };          // host transport tempo
+    std::atomic<double> publishedBpm { 0.0 };          // tempo estimated from audio
+    std::atomic<float>  publishedBpmConf { 0.0f };     // tempo estimate confidence
 
     mutable juce::SpinLock spectrumLock;
     std::vector<float>     publishedSpectrum;      // numBins magnitudes

@@ -46,7 +46,7 @@ KeyDetectorAudioProcessor::createParameterLayout()
 }
 
 //==============================================================================
-void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
+void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     currentSampleRate = sampleRate;
     detector.prepare (sampleRate, fftSize);
@@ -65,6 +65,9 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
     tunerCandCount    = 0;
     tunerSmoothedFreq = 0.0;
     tunerSilenceCount = 0;
+
+    tempoEstimator.prepare (sampleRate);
+    monoScratch.assign ((size_t) juce::jmax (1, samplesPerBlock), 0.0f);
 
     fifo.fill (0.0f);
     fftData.fill (0.0f);
@@ -298,12 +301,6 @@ void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 {
     juce::ScopedNoDenormals noDenormals;
 
-    // Read the host transport tempo (the BPM of the track this plugin sits on).
-    if (auto* ph = getPlayHead())
-        if (auto pos = ph->getPosition())
-            if (auto bpm = pos->getBpm())
-                publishedBpm.store (*bpm);
-
     const int numSamples  = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 
@@ -314,11 +311,20 @@ void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         const float* ch0 = buffer.getReadPointer (0);
         const float* ch1 = numChannels > 1 ? buffer.getReadPointer (1) : nullptr;
 
+        if ((int) monoScratch.size() < numSamples)
+            monoScratch.resize ((size_t) numSamples);
+
         for (int n = 0; n < numSamples; ++n)
         {
             const float mono = ch1 != nullptr ? 0.5f * (ch0[n] + ch1[n]) : ch0[n];
+            monoScratch[(size_t) n] = mono;
             pushSampleToFifo (mono);
         }
+
+        // Estimate tempo (BPM) from the audio itself (not the host clock).
+        tempoEstimator.processMono (monoScratch.data(), numSamples);
+        publishedBpm.store     ((double) tempoEstimator.getBpm());
+        publishedBpmConf.store (tempoEstimator.getConfidence());
     }
 }
 

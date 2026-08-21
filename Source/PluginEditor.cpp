@@ -141,9 +141,10 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     chroma.setTonic (est.pitchClass, est.isMinor);
     chroma.repaint();
 
-    // Host tempo.
+    // Tempo estimated from the audio (shown only when a clear pulse is detected).
     const double bpm = processorRef.getBpm();
-    bpmLabel.setText (bpm > 0.0 ? juce::String (bpm, 1) + " BPM" : "-- BPM",
+    bpmLabel.setText ((bpm > 0.0 && processorRef.getBpmConfidence() >= 0.25f)
+                          ? juce::String (bpm, 1) + " BPM" : "-- BPM",
                       juce::dontSendNotification);
 
     // Tuner (falls back to the loudest spectral peak for percussion/inharmonic input).

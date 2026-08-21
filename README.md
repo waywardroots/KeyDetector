@@ -6,7 +6,8 @@ estimates the musical **key** by correlating the chroma against the
 Krumhansl–Schmuckler key profiles. It also includes a **monophonic tuner** (YIN
 pitch detection) that shows the nearest note and cents deviation when a single note
 is played. The UI shows a live spectrum analyser, the chroma bars, the tuner, the
-detected key with a confidence read-out, and the host **tempo (BPM)**.
+detected key with a confidence read-out, and the **tempo (BPM) estimated from the
+audio** on the channel.
 
 Builds as **VST3**, **AU** (macOS) and **Standalone** (Windows / macOS / Linux).
 
@@ -41,12 +42,14 @@ KeyDetector/
 ├── Source/
 │   ├── ChromaKeyDetector.h/.cpp  # DSP core (NO JUCE dependency, unit-testable)
 │   ├── PitchDetector.h/.cpp      # YIN monophonic pitch detector (tuner, no JUCE)
+│   ├── TempoEstimator.h/.cpp     # audio BPM estimation (onset + autocorrelation)
 │   ├── PluginProcessor.h/.cpp    # audio thread: FIFO → FFT → chroma → publish
 │   ├── PluginEditor.h/.cpp       # GUI + 30 Hz timer polling the processor
 │   └── SpectrumAnalyzer.h/.cpp   # spectrum + chroma + tuner display components
 └── tests/
     ├── ChromaKeyDetectorTest.cpp # pure-C++17 sanity tests (ctest)
-    └── PitchDetectorTest.cpp     # YIN accuracy tests (ctest)
+    ├── PitchDetectorTest.cpp     # YIN accuracy tests (ctest)
+    └── TempoEstimatorTest.cpp    # tempo accuracy tests (ctest)
 ```
 
 ## Algorithmic choices (and why)
@@ -111,10 +114,13 @@ KeyDetector/
 
 ## BPM read-out
 
-The header shows the host transport tempo, read directly from the DAW via the
-plugin's playhead (`AudioPlayHead::getPosition()->getBpm()`). This is the tempo of
-the transport driving the track the plugin is on; it shows `-- BPM` when no host
-tempo is available (e.g. the Standalone build with no transport).
+The header shows the tempo **estimated from the audio on the channel** (not the
+host clock). An onset-detection function (half-wave-rectified RMS rise per short
+hop) is auto-correlated over a musical lag range, with a log-Gaussian tempo
+preference (~120 BPM) to resolve octave ambiguity; the strongest periodicity gives
+the BPM. It shows `-- BPM` until a clear pulse is present (so sustained/atonal or
+non-rhythmic material stays blank). See `Source/TempoEstimator.*` and
+`tests/TempoEstimatorTest.cpp`.
 
 ## Building
 

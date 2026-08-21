@@ -57,7 +57,8 @@ target_sources(KeyDetector PRIVATE
     Source/PluginEditor.cpp
     Source/SpectrumAnalyzer.cpp
     Source/ChromaKeyDetector.cpp
-    Source/PitchDetector.cpp)
+    Source/PitchDetector.cpp
+    Source/TempoEstimator.cpp)
 
 target_compile_definitions(KeyDetector PUBLIC
     JUCE_WEB_BROWSER=0            # avoids the webkit/gtk dependency
@@ -91,4 +92,10 @@ if(KEYDETECTOR_BUILD_TESTS)
         Source/PitchDetector.cpp)
     target_include_directories(PitchDetectorTest PRIVATE Source)
     add_test(NAME PitchDetectorTest COMMAND PitchDetectorTest)
+
+    add_executable(TempoEstimatorTest
+        tests/TempoEstimatorTest.cpp
+        Source/TempoEstimator.cpp)
+    target_include_directories(TempoEstimatorTest PRIVATE Source)
+    add_test(NAME TempoEstimatorTest COMMAND TempoEstimatorTest)
 endif()
