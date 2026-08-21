@@ -106,6 +106,9 @@ public:
 
     double getCurrentSampleRate() const noexcept { return currentSampleRate; }
 
+    /** Host transport tempo (BPM) as reported by the DAW, or 0 if unavailable. */
+    double getBpm() const noexcept { return publishedBpm.load(); }
+
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -164,6 +167,7 @@ private:
     std::atomic<float> publishedFreq    { 0.0f };  // tuner: fundamental Hz
     std::atomic<float> publishedClarity { 0.0f };  // tuner: 0..1
     std::atomic<bool>  publishedTunerIsPitch { true }; // pitch (YIN) vs peak fallback
+    std::atomic<double> publishedBpm { 0.0 };          // host transport tempo
 
     mutable juce::SpinLock spectrumLock;
     std::vector<float>     publishedSpectrum;      // numBins magnitudes

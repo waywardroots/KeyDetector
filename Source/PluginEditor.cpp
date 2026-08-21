@@ -21,6 +21,13 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     detailLabel.setText ("waiting for audio...", juce::dontSendNotification);
     addAndMakeVisible (detailLabel);
 
+    // Host tempo readout (top-right of the header).
+    bpmLabel.setJustificationType (juce::Justification::centredRight);
+    bpmLabel.setFont (juce::Font (juce::FontOptions (18.0f, juce::Font::bold)));
+    bpmLabel.setColour (juce::Label::textColourId, juce::Colour (0xff2bd1a4));
+    bpmLabel.setText ("-- BPM", juce::dontSendNotification);
+    addAndMakeVisible (bpmLabel);
+
     // --- Controls ---------------------------------------------------------------
     smoothingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     smoothingSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
@@ -73,13 +80,17 @@ void KeyDetectorAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white.withAlpha (0.35f));
     g.setFont (juce::Font (juce::FontOptions (12.0f)));
-    g.drawText ("chroma / Krumhansl-Schmuckler key estimation",
-                16, 32, 400, 18, juce::Justification::left, false);
+    g.drawText ("chroma / Krumhansl-Schmuckler key estimation  +  tuner  +  BPM",
+                16, 32, 460, 18, juce::Justification::left, false);
 }
 
 void KeyDetectorAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (12);
+
+    // Tempo readout in the header (top-right); the title is drawn on the left.
+    bpmLabel.setBounds (area.getX(), 10, area.getWidth(), 24);
+
     area.removeFromTop (40); // header
 
     // Bottom control strip.
@@ -129,6 +140,11 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     const auto est = processorRef.getKeyEstimate();
     chroma.setTonic (est.pitchClass, est.isMinor);
     chroma.repaint();
+
+    // Host tempo.
+    const double bpm = processorRef.getBpm();
+    bpmLabel.setText (bpm > 0.0 ? juce::String (bpm, 1) + " BPM" : "-- BPM",
+                      juce::dontSendNotification);
 
     // Tuner (falls back to the loudest spectral peak for percussion/inharmonic input).
     tuner.setReading (processorRef.getTunerFrequency(),

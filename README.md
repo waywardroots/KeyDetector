@@ -5,8 +5,8 @@ FFT spectrum, folds it into a 12-bin **chroma** vector (pitch-class energy) and
 estimates the musical **key** by correlating the chroma against the
 Krumhansl–Schmuckler key profiles. It also includes a **monophonic tuner** (YIN
 pitch detection) that shows the nearest note and cents deviation when a single note
-is played. The UI shows a live spectrum analyser, the chroma bars, the tuner, and
-the detected key with a confidence read-out.
+is played. The UI shows a live spectrum analyser, the chroma bars, the tuner, the
+detected key with a confidence read-out, and the host **tempo (BPM)**.
 
 Builds as **VST3**, **AU** (macOS) and **Standalone** (Windows / macOS / Linux).
 
@@ -108,6 +108,13 @@ KeyDetector/
 - **Tuner** – selects the tuner source: **Auto** (YIN pitch when a clear note is
   present, else the loudest peak), **Pitch** (always the YIN fundamental), or
   **Peak** (always the loudest spectral peak — best for percussion / SFX).
+
+## BPM read-out
+
+The header shows the host transport tempo, read directly from the DAW via the
+plugin's playhead (`AudioPlayHead::getPosition()->getBpm()`). This is the tempo of
+the transport driving the track the plugin is on; it shows `-- BPM` when no host
+tempo is available (e.g. the Standalone build with no transport).
 
 ## Building
 

@@ -298,6 +298,12 @@ void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 {
     juce::ScopedNoDenormals noDenormals;
 
+    // Read the host transport tempo (the BPM of the track this plugin sits on).
+    if (auto* ph = getPlayHead())
+        if (auto pos = ph->getPosition())
+            if (auto bpm = pos->getBpm())
+                publishedBpm.store (*bpm);
+
     const int numSamples  = buffer.getNumSamples();
     const int numChannels = buffer.getNumChannels();
 

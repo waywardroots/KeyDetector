@@ -30,6 +30,7 @@ private:
 
     juce::Label keyLabel;        // big "F# minor"
     juce::Label detailLabel;     // correlation / confidence
+    juce::Label bpmLabel;        // host tempo readout
 
     juce::Slider      smoothingSlider;
     juce::ToggleButton freezeButton { "Freeze" };
