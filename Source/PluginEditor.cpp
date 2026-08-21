@@ -113,16 +113,19 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     chroma.setTonic (est.pitchClass, est.isMinor);
     chroma.repaint();
 
-    // Tuner.
-    tuner.setReading (processorRef.getTunerFrequency(), processorRef.getTunerClarity());
+    // Tuner (falls back to the loudest spectral peak for percussion/inharmonic input).
+    tuner.setReading (processorRef.getTunerFrequency(),
+                      processorRef.getTunerClarity(),
+                      processorRef.getTunerIsPitch());
     tuner.repaint();
 
-    // Only show a key once there is meaningful energy in the chroma.
+    // Only show a key when the chroma is tonal enough.  Percussion / atonal input
+    // gives a flat chroma that correlates poorly with any key profile, so show "--".
     float chromaSum = 0.0f;
     for (float v : ch)
         chromaSum += v;
 
-    if (chromaSum > 1.0e-4f)
+    if (chromaSum > 1.0e-4f && est.correlation >= 0.6f)
     {
         keyLabel.setText (est.noteName(), juce::dontSendNotification);
         detailLabel.setText (
@@ -133,6 +136,7 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     else
     {
         keyLabel.setText ("--", juce::dontSendNotification);
-        detailLabel.setText ("waiting for audio...", juce::dontSendNotification);
+        detailLabel.setText (chromaSum > 1.0e-4f ? "no clear key" : "waiting for audio...",
+                             juce::dontSendNotification);
     }
 }

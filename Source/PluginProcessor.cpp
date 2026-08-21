@@ -103,25 +103,15 @@ void KeyDetectorAudioProcessor::analyseFrame()
     for (int i = 0; i < fftSize; ++i)
         fftData[(size_t) i] = fifo[(size_t) ((writePos + i) % fftSize)];
 
-    // --- Tuner: monophonic pitch on the most recent, *un-windowed* samples --------
-    {
-        auto pr = pitchDetector.process (fftData.data() + (fftSize - pitchWindow), pitchWindow);
-        publishedClarity.store (pr.clarity);
+    // --- Tuner step 1: monophonic pitch on the most recent, *un-windowed* samples -
+    // (Percussion / inharmonic sounds fall back to the loudest spectral peak below.)
+    const float* recent = fftData.data() + (fftSize - pitchWindow);
+    const auto pitchResult = pitchDetector.process (recent, pitchWindow);
 
-        if (pr.frequency > 0.0f && pr.clarity >= 0.5f)
-        {
-            // Geometric smoothing of the cents needle, but snap on note changes
-            // (jumps larger than ~a third of a semitone).
-            if (smoothedFreq <= 0.0f
-                || std::abs (std::log2 (pr.frequency / smoothedFreq)) > 0.03)
-                smoothedFreq = pr.frequency;
-            else
-                smoothedFreq = std::exp (0.6f * std::log (smoothedFreq)
-                                       + 0.4f * std::log (pr.frequency));
-
-            publishedFreq.store (smoothedFreq);
-        }
-    }
+    double rms = 0.0;
+    for (int i = 0; i < pitchWindow; ++i)
+        rms += (double) recent[i] * recent[i];
+    rms = std::sqrt (rms / pitchWindow);
 
     if (resetRequested.exchange (false))
     {
@@ -145,6 +135,39 @@ void KeyDetectorAudioProcessor::analyseFrame()
     window.multiplyWithWindowingTable (fftData.data(), (size_t) fftSize);
     forwardFFT.performFrequencyOnlyForwardTransform (fftData.data());
 
+    // --- Tuner step 2: choose the reading -----------------------------------------
+    // A clear harmonic note -> use the accurate YIN pitch (instrument tuner).
+    // Otherwise (drums / percussion / inharmonic) -> report the loudest spectral
+    // peak, so the tuner still "picks up" the dominant frequency.
+    const bool silent = rms < 1.0e-3;
+
+    if (silent)
+    {
+        publishedFreq.store (0.0f);
+        publishedClarity.store (0.0f);
+    }
+    else if (pitchResult.frequency > 0.0f && pitchResult.clarity >= 0.6f)
+    {
+        if (smoothedFreq <= 0.0f
+            || std::abs (std::log2 (pitchResult.frequency / smoothedFreq)) > 0.03)
+            smoothedFreq = pitchResult.frequency;
+        else
+            smoothedFreq = std::exp (0.6f * std::log (smoothedFreq)
+                                   + 0.4f * std::log (pitchResult.frequency));
+
+        publishedFreq.store (smoothedFreq);
+        publishedClarity.store (pitchResult.clarity);
+        publishedTunerIsPitch.store (true);
+    }
+    else
+    {
+        const float peakHz = dominantPeakHz (fftData.data(), numBins);
+        smoothedFreq = 0.0f; // don't carry pitch smoothing into peak mode
+        publishedFreq.store (peakHz);
+        publishedClarity.store (peakHz > 0.0f ? pitchResult.clarity : 0.0f);
+        publishedTunerIsPitch.store (false);
+    }
+
     // 2) Update chroma + key estimate from the magnitude spectrum.
     detector.processSpectrum (fftData.data(), numBins);
 
@@ -164,6 +187,30 @@ void KeyDetectorAudioProcessor::analyseFrame()
     const juce::SpinLock::ScopedTryLockType sl (spectrumLock);
     if (sl.isLocked())
         std::copy (fftData.begin(), fftData.begin() + numBins, publishedSpectrum.begin());
+}
+
+float KeyDetectorAudioProcessor::dominantPeakHz (const float* mags, int numMagBins) const
+{
+    // Loudest bin in a sensible range (skip DC / very low rumble and ultrasonics).
+    const int kLo = std::max (1, (int) std::floor (30.0 * fftSize / currentSampleRate));
+    const int kHi = std::min (numMagBins - 2, (int) std::ceil (12000.0 * fftSize / currentSampleRate));
+
+    int   kMax = kLo;
+    float mMax = 0.0f;
+    for (int k = kLo; k <= kHi; ++k)
+        if (mags[k] > mMax) { mMax = mags[k]; kMax = k; }
+
+    if (mMax <= 0.0f)
+        return 0.0f;
+
+    // Parabolic interpolation (log-magnitude) for a sub-bin frequency estimate.
+    const double a = std::log ((double) mags[kMax - 1] + 1.0e-12);
+    const double b = std::log ((double) mags[kMax]     + 1.0e-12);
+    const double c = std::log ((double) mags[kMax + 1] + 1.0e-12);
+    const double denom = a - 2.0 * b + c;
+    const double delta = std::abs (denom) > 1.0e-12 ? 0.5 * (a - c) / denom : 0.0;
+
+    return (float) (((double) kMax + delta) * currentSampleRate / (double) fftSize);
 }
 
 void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,

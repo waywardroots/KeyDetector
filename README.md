@@ -85,12 +85,15 @@ KeyDetector/
   a new key only replaces the current one after it has been the instantaneous
   winner for ~0.7 s of continuous frames, so momentary frames can't make the
   readout flicker while genuine key changes still register within about a second.
-- **Tuner (YIN).** A separate time-domain **YIN** autocorrelation detector runs on
-  the same buffer to estimate the monophonic fundamental to within a few cents and
-  without octave errors. Its "clarity" (periodicity) score gates the display, so
-  the tuner only shows a note when a single note is actually playing and stays idle
-  on chords / full mixes. The frequency is mapped to the nearest note (A440, equal
-  temperament) and shown as a note name + a cents needle.
+- **Tuner (YIN + peak fallback).** A time-domain **YIN** detector estimates the
+  monophonic fundamental to within a few cents for harmonic notes. When there is no
+  clear harmonic pitch (e.g. **percussion / inharmonic / drums**), the tuner falls
+  back to the **loudest spectral peak** (parabolic-interpolated) so it still reports
+  the dominant frequency, labelled `PEAK` instead of `PITCH`. The reading maps to
+  the nearest note (A440) with a cents needle.
+- **Atonal gating.** The key read-out only appears when the chroma correlates well
+  enough with a key profile. Percussion / atonal input gives a flat chroma (low
+  correlation), so it shows **"no clear key"** rather than a spurious key.
 
 ## Controls
 

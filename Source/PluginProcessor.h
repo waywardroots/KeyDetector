@@ -97,6 +97,10 @@ public:
     float getTunerFrequency() const noexcept { return publishedFreq.load(); }
     float getTunerClarity()   const noexcept { return publishedClarity.load(); }
 
+    /** True when the tuner reading is a harmonic pitch (YIN); false when it is the
+        loudest spectral peak fallback (e.g. for percussion / inharmonic sounds). */
+    bool getTunerIsPitch() const noexcept { return publishedTunerIsPitch.load(); }
+
     /** Ask the audio thread to clear the accumulated chroma at the next frame. */
     void requestReset() noexcept { resetRequested.store (true); }
 
@@ -110,6 +114,10 @@ private:
 
     void pushSampleToFifo (float sample) noexcept;
     void analyseFrame();
+
+    /** Frequency (Hz) of the single loudest spectral peak, parabolic-interpolated,
+        or 0 if none.  Works for any signal (used as the tuner's percussion fallback). */
+    float dominantPeakHz (const float* magnitudes, int numMagBins) const;
 
     //==============================================================================
     juce::dsp::FFT forwardFFT { fftOrder };
@@ -141,6 +149,7 @@ private:
     std::atomic<float> publishedConf    { 0.0f };
     std::atomic<float> publishedFreq    { 0.0f };  // tuner: fundamental Hz
     std::atomic<float> publishedClarity { 0.0f };  // tuner: 0..1
+    std::atomic<bool>  publishedTunerIsPitch { true }; // pitch (YIN) vs peak fallback
 
     mutable juce::SpinLock spectrumLock;
     std::vector<float>     publishedSpectrum;      // numBins magnitudes

@@ -220,12 +220,14 @@ void TunerDisplay::paint (juce::Graphics& g)
 
     auto area = bounds.reduced (8.0f);
 
-    // No confident single note -> prompt and bail.
-    if (frequency <= 0.0f || clarity < showClarity)
+    // No confident reading -> prompt and bail.  In pitch mode we require clarity;
+    // in peak mode any non-zero frequency (a detected loudest peak) is shown.
+    const bool haveReading = frequency > 0.0f && (isPitch ? clarity >= showClarity : true);
+    if (! haveReading)
     {
         g.setColour (juce::Colours::white.withAlpha (0.35f));
         g.setFont (14.0f);
-        g.drawText ("TUNER  -  play a single note", area, juce::Justification::centred, false);
+        g.drawText ("TUNER  -  play a note", area, juce::Justification::centred, false);
         return;
     }
 
@@ -234,14 +236,24 @@ void TunerDisplay::paint (juce::Graphics& g)
     const juce::String note = PitchDetector::noteName (midi);
 
     const bool  inTune = std::abs (cents) <= 5.0;
-    const bool  near   = std::abs (cents) <= 15.0;
-    const juce::Colour tuneCol = inTune ? juce::Colour (0xff3ddc84)
-                                        : near ? juce::Colour (0xffffc857)
-                                               : juce::Colour (0xffe0685a);
+    const bool  close  = std::abs (cents) <= 15.0;
+
+    // Pitch mode: red/amber/green tuning feedback.  Peak mode: neutral blue-grey
+    // (the "note" of a percussive peak is approximate, so don't imply "in tune").
+    const juce::Colour col = ! isPitch ? juce::Colour (0xff7fa8d0)
+                                       : inTune ? juce::Colour (0xff3ddc84)
+                                       : close  ? juce::Colour (0xffffc857)
+                                                : juce::Colour (0xffe0685a);
+
+    // Mode tag.
+    g.setColour (juce::Colours::white.withAlpha (0.30f));
+    g.setFont (juce::Font (juce::FontOptions (10.0f, juce::Font::bold)));
+    g.drawText (isPitch ? "PITCH" : "PEAK", bounds.reduced (6.0f).removeFromTop (12).toNearestInt(),
+                juce::Justification::topRight, false);
 
     // --- Note name on the left ---------------------------------------------------
     auto noteArea = area.removeFromLeft (96.0f);
-    g.setColour (tuneCol);
+    g.setColour (col);
     g.setFont (juce::Font (juce::FontOptions (40.0f, juce::Font::bold)));
     g.drawText (note, noteArea, juce::Justification::centred, false);
 
@@ -251,7 +263,6 @@ void TunerDisplay::paint (juce::Graphics& g)
     const float half = meter.getWidth() * 0.5f - 6.0f;
     const float midY = meter.getCentreY();
 
-    // Scale ticks at -50, -25, 0, +25, +50 cents.
     g.setFont (10.0f);
     for (int t = -50; t <= 50; t += 25)
     {
@@ -264,20 +275,17 @@ void TunerDisplay::paint (juce::Graphics& g)
                     (int) x - 16, (int) (midY + 15.0f), 32, 12, juce::Justification::centred, false);
     }
 
-    // Baseline.
     g.setColour (juce::Colours::white.withAlpha (0.12f));
     g.drawHorizontalLine ((int) midY, meter.getX(), meter.getRight());
 
-    // Needle.
     const float nx = cx + (float) juce::jlimit (-50.0, 50.0, cents) / 50.0f * half;
-    g.setColour (tuneCol);
+    g.setColour (col);
     juce::Path needle;
     needle.addTriangle (nx, midY - 16.0f, nx - 6.0f, midY - 28.0f, nx + 6.0f, midY - 28.0f);
     g.fillPath (needle);
     g.fillRect (juce::Rectangle<float> (nx - 1.0f, midY - 16.0f, 2.0f, 30.0f));
 
-    // Cents + frequency read-outs.
-    g.setColour (tuneCol);
+    g.setColour (col);
     g.setFont (juce::Font (juce::FontOptions (14.0f, juce::Font::bold)));
     g.drawText ((cents >= 0.0 ? "+" : "") + juce::String (cents, 1) + " cents",
                 meter.removeFromTop (16).toNearestInt(), juce::Justification::centred, false);
@@ -287,7 +295,7 @@ void TunerDisplay::paint (juce::Graphics& g)
     g.drawText (juce::String (frequency, 1) + " Hz",
                 meter.removeFromBottom (14).toNearestInt(), juce::Justification::centredRight, false);
 
-    if (inTune)
+    if (isPitch && inTune)
     {
         g.setColour (juce::Colour (0xff3ddc84));
         g.setFont (juce::Font (juce::FontOptions (11.0f, juce::Font::bold)));
