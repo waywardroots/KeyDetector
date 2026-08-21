@@ -70,13 +70,15 @@ KeyDetector/
   what makes the key read cleanly on real material. Each frame is L1-normalised
   (so loudness doesn't bias it) and folded into a running EMA for stability.
 - **Key selection.** Two methods are available:
-  * **Dominant pitch (default in the plugin)** — the **loudest pitch class** in the
-    smoothed chroma is taken as the key (its major). Simple and direct: the most
-    prominent note wins.
-  * **Krumhansl–Schmuckler correlation** — the chroma is correlated (Pearson) with
-    all 12 major (and 12 minor) key-profile rotations and the best match wins;
-    confidence is the margin over the runner-up. (Kept and unit-tested; select via
-    `ChromaKeyDetector::setKeyMethod`.)
+  * **Krumhansl–Schmuckler correlation (default)** — the chroma is correlated
+    (Pearson) with all 12 major (and 12 minor) key-profile rotations and the best
+    match wins; confidence is the margin over the runner-up. This correctly
+    identifies the tonic even when the loudest pitch class is the fifth (on a chord
+    the root is usually *not* the loudest note, because the root's 3rd harmonic
+    reinforces the fifth's pitch class).
+  * **Dominant pitch** — simply the loudest pitch class (its major). Direct, but on
+    chords it tends to report the fifth rather than the root; select it via
+    `ChromaKeyDetector::setKeyMethod` if you want raw prominence.
 - **Stability.** The chroma smoothing is defined by a **time constant** (the
   Smoothing knob maps to ~0.1–4 s), so the amount of averaging is independent of
   the FFT overlap/frame rate. On top of that, the reported key uses **hysteresis**:

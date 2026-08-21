@@ -44,7 +44,11 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
     currentSampleRate = sampleRate;
     detector.prepare (sampleRate, fftSize);
     detector.setMajorOnly (true);   // GUI shows major keys only (never minor)
-    detector.setKeyMethod (ChromaKeyDetector::KeyMethod::DominantPitch); // loudest pitch class = key
+    // Krumhansl–Schmuckler correlation: correctly identifies the tonic even when the
+    // loudest pitch class is the fifth (a chord's root is usually NOT its loudest
+    // note, because the root's 3rd harmonic reinforces the fifth).  With the
+    // peak-based chroma + smoothing + hysteresis this is now both accurate and steady.
+    detector.setKeyMethod (ChromaKeyDetector::KeyMethod::Correlation);
     detector.setKeyHoldTime (0.7f); // a new key must persist ~0.7 s before it's shown
 
     pitchDetector.prepare (sampleRate, pitchWindow);
