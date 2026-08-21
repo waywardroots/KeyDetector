@@ -74,13 +74,12 @@ class TunerDisplay : public juce::Component
 public:
     TunerDisplay() = default;
 
-    /** freqHz = detected frequency (0 if none), clarity = 0..1 periodicity,
-        isPitch = true for a harmonic pitch (YIN), false for the loudest-peak
-        fallback (percussion / inharmonic). */
-    void setReading (float freqHz, float clarityIn, bool isPitchIn) noexcept
+    /** freqHz = detected frequency (0 if none), isPitch = true for a harmonic pitch
+        (YIN), false for the loudest-peak fallback (percussion / inharmonic).  The
+        processor decides when a reading is valid, so this just needs the value. */
+    void setReading (float freqHz, float /*clarity*/, bool isPitchIn) noexcept
     {
         frequency = freqHz;
-        clarity   = clarityIn < 0.0f ? 0.0f : clarityIn;
         isPitch   = isPitchIn;
     }
 
@@ -88,10 +87,7 @@ public:
 
 private:
     float frequency = 0.0f;
-    float clarity   = 0.0f;
     bool  isPitch   = true;
-
-    static constexpr float showClarity = 0.6f; // hide the reading below this clarity
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TunerDisplay)
 };

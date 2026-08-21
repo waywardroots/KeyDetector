@@ -53,7 +53,11 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
 
     pitchDetector.prepare (sampleRate, pitchWindow);
     pitchDetector.setFrequencyRange (40.0, 1500.0);
-    smoothedFreq = 0.0f;
+    tunerDisplayMidi  = -1;
+    tunerCandMidi     = -1;
+    tunerCandCount    = 0;
+    tunerSmoothedFreq = 0.0;
+    tunerSilenceCount = 0;
 
     fifo.fill (0.0f);
     fftData.fill (0.0f);
@@ -135,38 +139,32 @@ void KeyDetectorAudioProcessor::analyseFrame()
     window.multiplyWithWindowingTable (fftData.data(), (size_t) fftSize);
     forwardFFT.performFrequencyOnlyForwardTransform (fftData.data());
 
-    // --- Tuner step 2: choose the reading -----------------------------------------
-    // A clear harmonic note -> use the accurate YIN pitch (instrument tuner).
-    // Otherwise (drums / percussion / inharmonic) -> report the loudest spectral
-    // peak, so the tuner still "picks up" the dominant frequency.
+    // --- Tuner step 2: choose the raw reading, then stabilise it ------------------
+    // A clear harmonic note -> accurate YIN pitch.  Otherwise (drums / percussion /
+    // inharmonic) -> the loudest spectral peak.  updateTuner() then holds the note
+    // and smooths the needle so the display is readable rather than flickering.
     const bool silent = rms < 1.0e-3;
 
-    if (silent)
-    {
-        publishedFreq.store (0.0f);
-        publishedClarity.store (0.0f);
-    }
-    else if (pitchResult.frequency > 0.0f && pitchResult.clarity >= 0.6f)
-    {
-        if (smoothedFreq <= 0.0f
-            || std::abs (std::log2 (pitchResult.frequency / smoothedFreq)) > 0.03)
-            smoothedFreq = pitchResult.frequency;
-        else
-            smoothedFreq = std::exp (0.6f * std::log (smoothedFreq)
-                                   + 0.4f * std::log (pitchResult.frequency));
+    float rawFreq = 0.0f;
+    bool  rawIsPitch = true;
+    bool  valid = false;
 
-        publishedFreq.store (smoothedFreq);
-        publishedClarity.store (pitchResult.clarity);
-        publishedTunerIsPitch.store (true);
-    }
-    else
+    if (! silent)
     {
-        const float peakHz = dominantPeakHz (fftData.data(), numBins);
-        smoothedFreq = 0.0f; // don't carry pitch smoothing into peak mode
-        publishedFreq.store (peakHz);
-        publishedClarity.store (peakHz > 0.0f ? pitchResult.clarity : 0.0f);
-        publishedTunerIsPitch.store (false);
+        if (pitchResult.frequency > 0.0f && pitchResult.clarity >= 0.6f)
+        {
+            rawFreq = pitchResult.frequency;
+            rawIsPitch = true;
+            valid = true;
+        }
+        else
+        {
+            const float peakHz = dominantPeakHz (fftData.data(), numBins);
+            if (peakHz > 0.0f) { rawFreq = peakHz; rawIsPitch = false; valid = true; }
+        }
     }
+
+    updateTuner (rawFreq, rawIsPitch, valid, pitchResult.clarity);
 
     // 2) Update chroma + key estimate from the magnitude spectrum.
     detector.processSpectrum (fftData.data(), numBins);
@@ -211,6 +209,75 @@ float KeyDetectorAudioProcessor::dominantPeakHz (const float* mags, int numMagBi
     const double delta = std::abs (denom) > 1.0e-12 ? 0.5 * (a - c) / denom : 0.0;
 
     return (float) (((double) kMax + delta) * currentSampleRate / (double) fftSize);
+}
+
+void KeyDetectorAudioProcessor::updateTuner (float rawFreq, bool rawIsPitch, bool valid, float clarity)
+{
+    const double hopSeconds = (double) hopSize / currentSampleRate;
+
+    // How long a new note must persist before the display switches (short, so it is
+    // still responsive), and how long the last note lingers after the sound stops.
+    const int noteHoldFrames = std::max (1, (int) std::lround (0.12 / hopSeconds));
+    const int releaseFrames  = std::max (1, (int) std::lround (0.30 / hopSeconds));
+    const double centsAlpha   = std::exp (-hopSeconds / 0.12); // needle smoothing (~120 ms)
+
+    if (valid && rawFreq > 0.0f)
+    {
+        tunerSilenceCount = 0;
+
+        int midi, pc, oct; double cents;
+        PitchDetector::frequencyToNote ((double) rawFreq, midi, pc, oct, cents);
+
+        if (tunerDisplayMidi < 0)
+        {
+            // First reading: adopt immediately.
+            tunerDisplayMidi    = midi;
+            tunerDisplayIsPitch = rawIsPitch;
+            tunerSmoothedFreq   = rawFreq;
+            tunerCandMidi = midi; tunerCandCount = 0;
+        }
+        else if (midi == tunerDisplayMidi)
+        {
+            // Same note: smooth the frequency so the cents needle glides.
+            tunerDisplayIsPitch = rawIsPitch;
+            tunerCandMidi = midi; tunerCandCount = 0;
+            tunerSmoothedFreq = std::exp (centsAlpha * std::log (tunerSmoothedFreq)
+                                        + (1.0 - centsAlpha) * std::log ((double) rawFreq));
+        }
+        else
+        {
+            // Different note: only switch after it persists for the hold time.
+            if (midi == tunerCandMidi) ++tunerCandCount;
+            else { tunerCandMidi = midi; tunerCandCount = 1; tunerCandIsPitch = rawIsPitch; }
+
+            if (tunerCandCount >= noteHoldFrames)
+            {
+                tunerDisplayMidi    = tunerCandMidi;
+                tunerDisplayIsPitch = tunerCandIsPitch;
+                tunerSmoothedFreq   = rawFreq;
+                tunerCandCount = 0;
+            }
+            // else: keep holding the current note (needle stays put).
+        }
+
+        publishedFreq.store ((float) tunerSmoothedFreq);
+        publishedClarity.store (tunerDisplayIsPitch ? clarity : 1.0f);
+        publishedTunerIsPitch.store (tunerDisplayIsPitch);
+    }
+    else
+    {
+        // No reading this frame: hold the last note briefly, then clear.
+        if (++tunerSilenceCount >= releaseFrames)
+        {
+            tunerDisplayMidi = -1;
+            tunerCandMidi = -1;
+            tunerCandCount = 0;
+            tunerSmoothedFreq = 0.0;
+            publishedFreq.store (0.0f);
+            publishedClarity.store (0.0f);
+        }
+        // else: leave the previously-published values in place (note lingers).
+    }
 }
 
 void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,

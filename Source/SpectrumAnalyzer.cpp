@@ -220,9 +220,9 @@ void TunerDisplay::paint (juce::Graphics& g)
 
     auto area = bounds.reduced (8.0f);
 
-    // No confident reading -> prompt and bail.  In pitch mode we require clarity;
-    // in peak mode any non-zero frequency (a detected loudest peak) is shown.
-    const bool haveReading = frequency > 0.0f && (isPitch ? clarity >= showClarity : true);
+    // The processor already decides when there is a valid, stabilised reading, so
+    // just show whenever a frequency is present.
+    const bool haveReading = frequency > 0.0f;
     if (! haveReading)
     {
         g.setColour (juce::Colours::white.withAlpha (0.35f));

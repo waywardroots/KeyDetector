@@ -119,6 +119,11 @@ private:
         or 0 if none.  Works for any signal (used as the tuner's percussion fallback). */
     float dominantPeakHz (const float* magnitudes, int numMagBins) const;
 
+    /** Stabilise + publish the tuner reading: holds the displayed note (hysteresis),
+        smooths the cents needle, and briefly holds the last note, so the read-out is
+        steady and easy to read instead of flickering frame-to-frame. */
+    void updateTuner (float rawFreq, bool rawIsPitch, bool valid, float clarity);
+
     //==============================================================================
     juce::dsp::FFT forwardFFT { fftOrder };
     juce::dsp::WindowingFunction<float> window { (size_t) fftSize,
@@ -135,7 +140,15 @@ private:
     // Monophonic tuner (YIN).  Runs on the most recent `pitchWindow` samples.
     static constexpr int pitchWindow = 4096;
     PitchDetector pitchDetector;
-    float smoothedFreq = 0.0f;   // audio-thread smoothing of the reported pitch
+
+    // Tuner display-stabilisation state (see updateTuner).
+    int    tunerDisplayMidi   = -1;    // currently shown note (-1 = none)
+    bool   tunerDisplayIsPitch = true;
+    double tunerSmoothedFreq  = 0.0;   // smoothed frequency -> steady cents needle
+    int    tunerCandMidi      = -1;    // challenger note awaiting the hold time
+    int    tunerCandCount     = 0;
+    bool   tunerCandIsPitch   = true;
+    int    tunerSilenceCount  = 0;
 
     // Cached parameter handles.
     std::atomic<float>* smoothingParam = nullptr;
