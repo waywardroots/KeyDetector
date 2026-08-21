@@ -27,6 +27,13 @@ class ChromaKeyDetector
 public:
     static constexpr int numPitchClasses = 12;
 
+    /** How the key (tonic) is chosen from the chroma vector. */
+    enum class KeyMethod
+    {
+        Correlation,    // Krumhansl–Schmuckler key-profile correlation (24 keys)
+        DominantPitch   // simply the loudest pitch class (its major key)
+    };
+
     struct KeyEstimate
     {
         int   pitchClass  = 0;      // 0 = C, 1 = C#, 2 = D … 11 = B
@@ -63,6 +70,9 @@ public:
         minor key).  The GUI uses this so the readout is always a major key. */
     void setMajorOnly (bool shouldRestrict) noexcept { majorOnly = shouldRestrict; }
 
+    /** Choose how the key is picked from the chroma (correlation vs loudest peak). */
+    void setKeyMethod (KeyMethod m) noexcept { keyMethod = m; }
+
     /** The current smoothed, L1-normalised chroma vector (sums to ~1, or all-zero
         before any non-silent frame has been seen). */
     std::array<float, numPitchClasses> getChroma() const;
@@ -98,6 +108,7 @@ private:
     float  smoothing  = 0.85f;
     bool   frozen     = false;
     bool   majorOnly  = false;
+    KeyMethod keyMethod = KeyMethod::Correlation;
 
     // Key hysteresis state (used by estimateStableKey).
     int    stablePc      = -1;

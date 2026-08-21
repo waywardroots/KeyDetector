@@ -69,10 +69,14 @@ KeyDetector/
   A440 table, and rejected if it's more than a quarter-tone from any note. This is
   what makes the key read cleanly on real material. Each frame is L1-normalised
   (so loudness doesn't bias it) and folded into a running EMA for stability.
-- **Key-profile correlation (Krumhansl–Schmuckler).** The chroma is correlated
-  (Pearson) with all 12 rotations of the major profile and 12 of the minor
-  profile; the highest correlation wins. Confidence is the normalised margin over
-  the runner-up. This is a compact, well-established, tonal-hierarchy key finder.
+- **Key selection.** Two methods are available:
+  * **Dominant pitch (default in the plugin)** — the **loudest pitch class** in the
+    smoothed chroma is taken as the key (its major). Simple and direct: the most
+    prominent note wins.
+  * **Krumhansl–Schmuckler correlation** — the chroma is correlated (Pearson) with
+    all 12 major (and 12 minor) key-profile rotations and the best match wins;
+    confidence is the margin over the runner-up. (Kept and unit-tested; select via
+    `ChromaKeyDetector::setKeyMethod`.)
 - **Stability.** The chroma smoothing is defined by a **time constant** (the
   Smoothing knob maps to ~0.1–4 s), so the amount of averaging is independent of
   the FFT overlap/frame rate. On top of that, the reported key uses **hysteresis**:

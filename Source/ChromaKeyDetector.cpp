@@ -221,6 +221,33 @@ double ChromaKeyDetector::keyCorrelation (int key, bool minor) const
 
 ChromaKeyDetector::KeyEstimate ChromaKeyDetector::estimateKey() const
 {
+    // --- Dominant-pitch method: the loudest pitch class is the key (major) --------
+    if (keyMethod == KeyMethod::DominantPitch)
+    {
+        double total = 0.0;
+        for (double v : chroma)
+            total += v;
+
+        int argmax = 0;
+        for (int i = 1; i < 12; ++i)
+            if (chroma[(size_t) i] > chroma[(size_t) argmax])
+                argmax = i;
+
+        double second = 0.0;
+        for (int i = 0; i < 12; ++i)
+            if (i != argmax && chroma[(size_t) i] > second)
+                second = chroma[(size_t) i];
+
+        const double mx = chroma[(size_t) argmax];
+
+        KeyEstimate e;
+        e.pitchClass  = argmax;
+        e.isMinor     = false; // dominant-pitch keys are reported as major
+        e.correlation = total > 1.0e-12 ? (float) (mx / total) : 0.0f;         // energy fraction
+        e.confidence  = mx    > 1.0e-12 ? (float) std::clamp ((mx - second) / mx, 0.0, 1.0) : 0.0f;
+        return e;
+    }
+
     KeyEstimate best;
     double bestCorr   = -2.0;
     double secondCorr = -2.0;

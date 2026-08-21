@@ -44,6 +44,7 @@ void KeyDetectorAudioProcessor::prepareToPlay (double sampleRate, int)
     currentSampleRate = sampleRate;
     detector.prepare (sampleRate, fftSize);
     detector.setMajorOnly (true);   // GUI shows major keys only (never minor)
+    detector.setKeyMethod (ChromaKeyDetector::KeyMethod::DominantPitch); // loudest pitch class = key
     detector.setKeyHoldTime (0.7f); // a new key must persist ~0.7 s before it's shown
 
     pitchDetector.prepare (sampleRate, pitchWindow);

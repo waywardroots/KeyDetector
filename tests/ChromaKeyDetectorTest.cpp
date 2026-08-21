@@ -194,6 +194,29 @@ int main()
         check (switched,       "a sustained G run does switch the reported key");
     }
 
+    // --- 7) Dominant-pitch method: the loudest pitch class becomes the key -------
+    {
+        ChromaKeyDetector det;
+        det.prepare (kSampleRate, kFftSize);
+        det.setSmoothing (0.5f);
+        det.setKeyMethod (ChromaKeyDetector::KeyMethod::DominantPitch);
+
+        // E is by far the loudest note; a couple of quiet others are present too.
+        for (int frame = 0; frame < 40; ++frame)
+        {
+            std::vector<float> mags ((size_t) kNumBins, 0.0f);
+            addTone (mags, 329.63, 1.0f);  // E4  (loud)
+            addTone (mags, 261.63, 0.25f); // C4  (quiet)
+            addTone (mags, 392.00, 0.25f); // G4  (quiet)
+            det.processSpectrum (mags.data(), kNumBins);
+        }
+        auto est = det.estimateKey();
+        std::printf ("dominant-pitch (E loudest) -> %s (strength=%.2f)\n",
+                     est.name().c_str(), est.correlation);
+        check (est.pitchClass == 4 && ! est.isMinor,
+               "dominant-pitch method picks the loudest pitch class (E) as the key");
+    }
+
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",
                  failures, failures == 1 ? "" : "s");
