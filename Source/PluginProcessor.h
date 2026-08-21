@@ -153,6 +153,7 @@ private:
     // Cached parameter handles.
     std::atomic<float>* smoothingParam = nullptr;
     std::atomic<float>* freezeParam    = nullptr;
+    std::atomic<float>* tunerModeParam = nullptr; // 0=Auto, 1=Pitch, 2=Peak
 
     // ---- Published analysis state (audio thread -> GUI thread) ------------------
     std::array<std::atomic<float>, 12> publishedChroma {};

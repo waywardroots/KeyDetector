@@ -105,6 +105,9 @@ KeyDetector/
 - **Smoothing** – EMA coefficient (0 = instant, ~0.85 = steady). Saved with state.
 - **Freeze** – hold the current chroma/key (stop accumulating).
 - **Reset** – clear the accumulated chroma and start estimating from scratch.
+- **Tuner** – selects the tuner source: **Auto** (YIN pitch when a clear note is
+  present, else the loudest peak), **Pitch** (always the YIN fundamental), or
+  **Peak** (always the loudest spectral peak — best for percussion / SFX).
 
 ## Building
 

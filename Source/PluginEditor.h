@@ -36,10 +36,15 @@ private:
     juce::TextButton   resetButton  { "Reset" };
     juce::Label        smoothingLabel { {}, "Smoothing" };
 
+    juce::ComboBox     tunerModeBox;
+    juce::Label        tunerModeLabel { {}, "Tuner" };
+
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
+    using ComboBoxAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
     std::unique_ptr<SliderAttachment> smoothingAttachment;
     std::unique_ptr<ButtonAttachment> freezeAttachment;
+    std::unique_ptr<ComboBoxAttachment> tunerModeAttachment;
 
     std::vector<float> spectrumScratch; // reused each timer tick
 

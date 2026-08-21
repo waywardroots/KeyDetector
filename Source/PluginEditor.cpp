@@ -40,6 +40,17 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     resetButton.onClick = [this] { processorRef.requestReset(); };
     addAndMakeVisible (resetButton);
 
+    // Tuner mode selector (Auto / Pitch / Peak).
+    tunerModeBox.addItemList ({ "Auto", "Pitch", "Peak" }, 1);
+    addAndMakeVisible (tunerModeBox);
+    tunerModeAttachment = std::make_unique<ComboBoxAttachment> (
+        processorRef.apvts, "tunerMode", tunerModeBox);
+
+    tunerModeLabel.setJustificationType (juce::Justification::centred);
+    tunerModeLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
+    tunerModeLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
+    addAndMakeVisible (tunerModeLabel);
+
     spectrumScratch.reserve ((size_t) KeyDetectorAudioProcessor::numBins);
 
     setSize (640, 500);
@@ -80,8 +91,14 @@ void KeyDetectorAudioProcessorEditor::resized()
         smoothingSlider.setBounds (knob);
 
         c.removeFromLeft (16);
-        freezeButton.setBounds (c.removeFromLeft (90).withSizeKeepingCentre (90, 30));
-        resetButton .setBounds (c.removeFromLeft (90).withSizeKeepingCentre (80, 30));
+        freezeButton.setBounds (c.removeFromLeft (80).withSizeKeepingCentre (80, 30));
+        resetButton .setBounds (c.removeFromLeft (76).withSizeKeepingCentre (72, 30));
+
+        // Tuner mode selector.
+        c.removeFromLeft (10);
+        auto tm = c.removeFromLeft (92);
+        tunerModeLabel.setBounds (tm.removeFromBottom (16));
+        tunerModeBox.setBounds (tm.withSizeKeepingCentre (92, 26));
 
         // Key readout occupies the rest of the strip.
         keyLabel.setBounds (c.removeFromTop (46));

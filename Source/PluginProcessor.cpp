@@ -12,6 +12,7 @@ KeyDetectorAudioProcessor::KeyDetectorAudioProcessor()
 {
     smoothingParam = apvts.getRawParameterValue ("smoothing");
     freezeParam    = apvts.getRawParameterValue ("freeze");
+    tunerModeParam = apvts.getRawParameterValue ("tunerMode");
 
     publishedSpectrum.assign ((size_t) numBins, 0.0f);
 }
@@ -34,6 +35,12 @@ KeyDetectorAudioProcessor::createParameterLayout()
     // Freeze = hold the current chroma / key (stop accumulating).
     layout.add (std::make_unique<AudioParameterBool> (
         ParameterID { "freeze", 1 }, "Freeze", false));
+
+    // Tuner mode: Auto = pitch when a clear note is present else loudest peak;
+    // Pitch = always the YIN fundamental; Peak = always the loudest spectral peak.
+    layout.add (std::make_unique<AudioParameterChoice> (
+        ParameterID { "tunerMode", 1 }, "Tuner Mode",
+        juce::StringArray { "Auto", "Pitch", "Peak" }, 0));
 
     return layout;
 }
@@ -139,11 +146,12 @@ void KeyDetectorAudioProcessor::analyseFrame()
     window.multiplyWithWindowingTable (fftData.data(), (size_t) fftSize);
     forwardFFT.performFrequencyOnlyForwardTransform (fftData.data());
 
-    // --- Tuner step 2: choose the raw reading, then stabilise it ------------------
-    // A clear harmonic note -> accurate YIN pitch.  Otherwise (drums / percussion /
-    // inharmonic) -> the loudest spectral peak.  updateTuner() then holds the note
-    // and smooths the needle so the display is readable rather than flickering.
+    // --- Tuner step 2: choose the raw reading (per Tuner Mode), then stabilise ----
+    //   Auto  = YIN pitch when a clear note is present, else the loudest peak.
+    //   Pitch = always the YIN fundamental (the played note, cents-accurate).
+    //   Peak  = always the loudest spectral peak (good for percussion / SFX).
     const bool silent = rms < 1.0e-3;
+    const int  tunerMode = tunerModeParam != nullptr ? (int) (tunerModeParam->load() + 0.5f) : 0;
 
     float rawFreq = 0.0f;
     bool  rawIsPitch = true;
@@ -151,13 +159,18 @@ void KeyDetectorAudioProcessor::analyseFrame()
 
     if (! silent)
     {
-        if (pitchResult.frequency > 0.0f && pitchResult.clarity >= 0.6f)
+        bool usePitch;
+        if      (tunerMode == 1) usePitch = true;   // Pitch
+        else if (tunerMode == 2) usePitch = false;  // Peak
+        else                     usePitch = (pitchResult.frequency > 0.0f && pitchResult.clarity >= 0.6f);
+
+        if (usePitch && pitchResult.frequency > 0.0f)
         {
             rawFreq = pitchResult.frequency;
             rawIsPitch = true;
             valid = true;
         }
-        else
+        else if (! usePitch || tunerMode == 0) // Peak, or Auto falling back to peak
         {
             const float peakHz = dominantPeakHz (fftData.data(), numBins);
             if (peakHz > 0.0f) { rawFreq = peakHz; rawIsPitch = false; valid = true; }
