@@ -40,6 +40,8 @@ private:
     juce::ComboBox     tunerModeBox;
     juce::Label        tunerModeLabel { {}, "Tuner" };
     juce::ComboBox     tempoMultBox;   // BPM ×½ / ×1 / ×2
+    juce::TextButton   tapButton  { "Tap" };
+    juce::TextButton   holdButton { "Hold" };
 
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
@@ -50,6 +52,13 @@ private:
     std::unique_ptr<ComboBoxAttachment> tempoMultAttachment;
 
     std::vector<float> spectrumScratch; // reused each timer tick
+
+    // Tap-tempo + BPM hold state (UI-side).
+    std::vector<double> tapTimes;        // recent tap timestamps (ms)
+    double  lastTapMs   = 0.0;
+    double  tappedBpm   = 0.0;
+    juce::String lastLiveBpmText { "-- BPM" };
+    juce::String heldBpmText     { "-- BPM" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeyDetectorAudioProcessorEditor)
 };

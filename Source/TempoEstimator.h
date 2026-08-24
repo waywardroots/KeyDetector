@@ -48,9 +48,9 @@ private:
     double sampleRate = 44100.0;
 
     // Spectral-flux front end.
-    int    fftSize   = 1024;
+    int    fftSize   = 4096;
     int    hop       = 512;
-    double onsetRate = 86.13; // ODF samples per second (sampleRate / hop)
+    double onsetRate = 93.75; // ODF samples per second (sampleRate / hop)
 
     std::vector<float> inRing;      // last fftSize input samples (circular)
     int    inPos = 0;

@@ -50,7 +50,7 @@ namespace
 void TempoEstimator::prepare (double newSampleRate)
 {
     sampleRate = newSampleRate;
-    fftSize    = 1024;
+    fftSize    = 4096;   // finer bins -> steady tones leak far less (fewer false onsets)
     hop        = 512;
     onsetRate  = sampleRate / (double) hop;
 
@@ -107,7 +107,7 @@ void TempoEstimator::processHop()
     }
     fft (re, im);
 
-    // Spectral flux = sum of positive magnitude changes.
+    // Spectral flux = sum of positive magnitude changes (onset strength).
     float flux = 0.0f;
     for (int k = 1; k < fluxMaxBin; ++k)
     {
@@ -144,14 +144,26 @@ void TempoEstimator::computeTempo()
 
     const int n = filled;
 
-    double mean = 0.0;
+    double mean = 0.0, maxRaw = 0.0;
     for (int i = 0; i < n; ++i)
     {
         const float v = odf[(size_t) ((writePos - n + i + odfSize) % odfSize)];
         scratch[(size_t) i] = v;
         mean += v;
+        if (v > maxRaw) maxRaw = v;
     }
     mean /= n;
+
+    // Onset-activity (crest) gate: real rhythm / note-changes give a spiky onset
+    // envelope (peaks far above the mean); steady/sustained material gives a flat
+    // one.  Rejecting low-crest frames avoids reporting a tempo when there is no
+    // real onset activity.
+    const double crest = maxRaw / (mean + 1.0e-12);
+    if (crest < 4.0)
+    {
+        confidence = 0.0f;
+        return;
+    }
 
     double var = 0.0;
     for (int i = 0; i < n; ++i)

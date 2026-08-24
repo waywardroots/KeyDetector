@@ -35,6 +35,39 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     tempoMultAttachment = std::make_unique<ComboBoxAttachment> (
         processorRef.apvts, "tempoMult", tempoMultBox);
 
+    // Tap tempo: derive BPM from the spacing of button presses.
+    addAndMakeVisible (tapButton);
+    tapButton.onClick = [this]
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        if (now - lastTapMs > 2000.0)   // long gap -> start a fresh tap session
+            tapTimes.clear();
+        lastTapMs = now;
+        tapTimes.push_back (now);
+        if (tapTimes.size() > 8)
+            tapTimes.erase (tapTimes.begin());
+
+        if (tapTimes.size() >= 2)
+        {
+            const double span = tapTimes.back() - tapTimes.front();
+            const double avg  = span / (double) (tapTimes.size() - 1);
+            if (avg > 0.0)
+                tappedBpm = juce::jlimit (30.0, 300.0, 60000.0 / avg);
+        }
+
+        // Tapping releases Hold and takes over the read-out.
+        holdButton.setToggleState (false, juce::dontSendNotification);
+    };
+
+    // Hold: freeze the BPM read-out at its current value.
+    holdButton.setClickingTogglesState (true);
+    addAndMakeVisible (holdButton);
+    holdButton.onClick = [this]
+    {
+        if (holdButton.getToggleState())
+            heldBpmText = lastLiveBpmText; // capture whatever is shown right now
+    };
+
     // --- Controls ---------------------------------------------------------------
     smoothingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     smoothingSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
@@ -95,12 +128,16 @@ void KeyDetectorAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (12);
 
-    // Header row (top-right): BPM read-out + its ×½/×1/×2 octave selector.
+    // Header row (top-right): [Tap][Hold]  BPM  [×½/×1/×2]
     {
         auto header = juce::Rectangle<int> (area.getX(), 10, area.getWidth(), 26);
-        tempoMultBox.setBounds (header.removeFromRight (64));
+        tempoMultBox.setBounds (header.removeFromRight (58));
+        header.removeFromRight (6);
+        bpmLabel.setBounds (header.removeFromRight (116));
         header.removeFromRight (8);
-        bpmLabel.setBounds (header.removeFromRight (140));
+        holdButton.setBounds (header.removeFromRight (46));
+        header.removeFromRight (4);
+        tapButton.setBounds (header.removeFromRight (44));
     }
 
     area.removeFromTop (40); // header
@@ -153,11 +190,34 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     chroma.setTonic (est.pitchClass, est.isMinor);
     chroma.repaint();
 
-    // Tempo estimated from the audio (shown only when a clear pulse is detected).
-    const double bpm = processorRef.getBpm();
-    bpmLabel.setText ((bpm > 0.0 && processorRef.getBpmConfidence() >= 0.25f)
-                          ? juce::String (bpm, 1) + " BPM" : "-- BPM",
-                      juce::dontSendNotification);
+    // Tempo read-out: Hold (frozen) > Tap (recent taps) > audio estimate.
+    // Source is shown by colour: green = audio, blue = tap, amber = hold.
+    const double now = juce::Time::getMillisecondCounterHiRes();
+    const bool   tapValid = tappedBpm > 0.0 && (now - lastTapMs) < 5000.0;
+
+    juce::Colour bpmColour = juce::Colour (0xff2bd1a4);
+    if (tapValid)
+    {
+        lastLiveBpmText = juce::String (tappedBpm, 1) + " BPM";
+        bpmColour = juce::Colour (0xff6ea8ff);
+    }
+    else
+    {
+        const double bpm = processorRef.getBpm();
+        lastLiveBpmText = (bpm > 0.0 && processorRef.getBpmConfidence() >= 0.25f)
+                              ? juce::String (bpm, 1) + " BPM" : "-- BPM";
+    }
+
+    if (holdButton.getToggleState())
+    {
+        bpmLabel.setText (heldBpmText, juce::dontSendNotification);
+        bpmColour = juce::Colour (0xffffc857);
+    }
+    else
+    {
+        bpmLabel.setText (lastLiveBpmText, juce::dontSendNotification);
+    }
+    bpmLabel.setColour (juce::Label::textColourId, bpmColour);
 
     // Tuner (falls back to the loudest spectral peak for percussion/inharmonic input).
     tuner.setReading (processorRef.getTunerFrequency(),

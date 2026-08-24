@@ -115,13 +115,20 @@ KeyDetector/
 ## BPM read-out
 
 The header shows the tempo **estimated from the audio on the channel** (not the
-host clock). The onset-detection function is **spectral flux** (the sum of positive
-changes in the magnitude spectrum), so it finds a tempo from drum hits *and* from
-note/chord changes at constant loudness — i.e. it can read a BPM even with no
-percussive "beat". The onset envelope is auto-correlated over a musical lag range,
-with a gentle tempo preference (~120 BPM). Because half/double-time is inherently
-ambiguous, a **×½ / ×1 / ×2** selector next to the read-out lets you lock the
-octave. It shows `-- BPM` until a clear pulse is present. See
+host clock). The onset-detection function is **spectral flux** from a 4096-point
+STFT (so steady tones barely register, while note/chord changes and drum hits
+produce clear onsets — it can therefore read a BPM even with no percussive
+"beat"). The onset envelope is mean-removed and auto-correlated over a musical lag
+range, gated by an onset-activity (crest) test so sustained material reads
+`-- BPM` instead of a spurious tempo.
+
+Controls next to the read-out:
+- **Tap** – tap in time; the BPM is derived from your tap spacing (overrides the
+  estimate for ~5 s; blue text).
+- **Hold** – freeze the current read-out at its value (amber text).
+- **×½ / ×1 / ×2** – lock the tempo octave if a track reads half/double-time.
+
+Colour code: green = estimated from audio, blue = tapped, amber = held. See
 `Source/TempoEstimator.*` and `tests/TempoEstimatorTest.cpp`.
 
 ## Building
