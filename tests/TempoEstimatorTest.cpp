@@ -74,6 +74,33 @@ int main()
         check (te.getConfidence() < 0.5f, "steady tone has low tempo confidence");
     }
 
+    // "No beat": chords change at 110 BPM but the LOUDNESS is constant (no
+    // amplitude onsets).  Spectral flux should still find the tempo.
+    {
+        const double bpm = 110.0;
+        const double beat = 60.0 / bpm * kSR;
+        const int total = (int) (kSR * 10);
+        std::vector<float> sig ((size_t) total, 0.0f);
+        // Two chords (C major / A minor-ish) alternating each beat.
+        const double chordA[3] = { 261.63, 329.63, 392.00 };
+        const double chordB[3] = { 293.66, 349.23, 440.00 };
+        for (int n = 0; n < total; ++n)
+        {
+            const int beatIdx = (int) (n / beat);
+            const double* ch = (beatIdx % 2 == 0) ? chordA : chordB;
+            double s = 0.0;
+            for (int k = 0; k < 3; ++k) s += std::sin (2.0 * M_PI * ch[k] * n / kSR);
+            sig[(size_t) n] = (float) (0.2 * s);   // constant amplitude
+        }
+        TempoEstimator te; te.prepare (kSR);
+        for (int i = 0; i + 512 <= total; i += 512)
+            te.processMono (sig.data() + i, 512);
+        std::printf ("no-beat chord changes 110 BPM -> %.1f BPM (conf %.2f)\n",
+                     te.getBpm(), te.getConfidence());
+        check (std::abs (te.getBpm() - 110.0) <= 3.0,
+               "detects tempo from chord changes with no amplitude beat");
+    }
+
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",
                  failures, failures == 1 ? "" : "s");

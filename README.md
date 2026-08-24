@@ -115,12 +115,14 @@ KeyDetector/
 ## BPM read-out
 
 The header shows the tempo **estimated from the audio on the channel** (not the
-host clock). An onset-detection function (half-wave-rectified RMS rise per short
-hop) is auto-correlated over a musical lag range, with a log-Gaussian tempo
-preference (~120 BPM) to resolve octave ambiguity; the strongest periodicity gives
-the BPM. It shows `-- BPM` until a clear pulse is present (so sustained/atonal or
-non-rhythmic material stays blank). See `Source/TempoEstimator.*` and
-`tests/TempoEstimatorTest.cpp`.
+host clock). The onset-detection function is **spectral flux** (the sum of positive
+changes in the magnitude spectrum), so it finds a tempo from drum hits *and* from
+note/chord changes at constant loudness — i.e. it can read a BPM even with no
+percussive "beat". The onset envelope is auto-correlated over a musical lag range,
+with a gentle tempo preference (~120 BPM). Because half/double-time is inherently
+ambiguous, a **×½ / ×1 / ×2** selector next to the read-out lets you lock the
+octave. It shows `-- BPM` until a clear pulse is present. See
+`Source/TempoEstimator.*` and `tests/TempoEstimatorTest.cpp`.
 
 ## Building
 

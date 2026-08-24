@@ -39,6 +39,7 @@ private:
 
     juce::ComboBox     tunerModeBox;
     juce::Label        tunerModeLabel { {}, "Tuner" };
+    juce::ComboBox     tempoMultBox;   // BPM ×½ / ×1 / ×2
 
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
@@ -46,6 +47,7 @@ private:
     std::unique_ptr<SliderAttachment> smoothingAttachment;
     std::unique_ptr<ButtonAttachment> freezeAttachment;
     std::unique_ptr<ComboBoxAttachment> tunerModeAttachment;
+    std::unique_ptr<ComboBoxAttachment> tempoMultAttachment;
 
     std::vector<float> spectrumScratch; // reused each timer tick
 

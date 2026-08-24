@@ -8,16 +8,17 @@
     Estimates tempo (BPM) directly from the audio, independent of the host clock.
 
     Pipeline:
-      1. Onset-detection function (ODF): the audio is chopped into short hops; for
-         each hop we take its RMS and keep the *rise* in level (half-wave rectified
-         difference).  This peaks at note/drum onsets.
-      2. The ODF history is mean-removed and auto-correlated over the lag range that
-         corresponds to a musical tempo range (default 60–200 BPM).  The strongest
-         periodicity (with parabolic interpolation) gives the beat period -> BPM.
-      3. A normalised peak height is reported as a confidence, so the caller can hide
-         the read-out when there is no clear pulse (e.g. sustained/among-tonal pads).
+      1. Onset-detection function (ODF) = **spectral flux**: the audio is chopped
+         into short overlapping windows; the ODF is the sum of the positive changes
+         in the magnitude spectrum between consecutive windows.  Spectral flux peaks
+         both on drum hits *and* on note/chord changes at constant loudness, so a
+         tempo can be found even when there is no percussive "beat".
+      2. The ODF history is mean-removed and auto-correlated over the lag range for a
+         musical tempo range.  A gentle log-Gaussian tempo preference (~120 BPM)
+         nudges the octave choice.  The strongest periodicity -> beat period -> BPM.
+      3. A normalised peak height is reported as a confidence.
 
-    No JUCE dependency, so it can be unit-tested on its own.
+    No JUCE dependency (has a tiny internal radix-2 FFT), so it is unit-testable.
 */
 class TempoEstimator
 {
@@ -40,25 +41,33 @@ public:
     }
 
 private:
+    void processHop();        // compute spectral flux for the current window
     void pushOnset (float value);
     void computeTempo();
 
     double sampleRate = 44100.0;
-    int    onsetHop   = 512;      // samples per ODF sample
-    double onsetRate  = 86.13;    // ODF samples per second (sampleRate / onsetHop)
 
-    // Per-hop RMS accumulation.
-    double accum      = 0.0;
-    int    accumCount = 0;
-    float  prevRms    = 0.0f;
+    // Spectral-flux front end.
+    int    fftSize   = 1024;
+    int    hop       = 512;
+    double onsetRate = 86.13; // ODF samples per second (sampleRate / hop)
+
+    std::vector<float> inRing;      // last fftSize input samples (circular)
+    int    inPos = 0;
+    int    hopCountdown = 0;
+
+    std::vector<float> hann;        // window
+    std::vector<float> re, im;      // FFT scratch
+    std::vector<float> prevMag;     // previous magnitude spectrum
+    int    fluxMaxBin = 0;          // ignore very high bins
 
     // ODF ring buffer.
     std::vector<float> odf;
-    int    odfSize    = 1024;     // ~11 s at 48 kHz / hop 512
+    int    odfSize    = 1024;
     int    writePos   = 0;
     int    filled     = 0;
     int    sinceCompute = 0;
-    int    computeEvery = 16;     // recompute tempo every ~0.17 s
+    int    computeEvery = 16;
 
     double minBpm = 60.0;
     double maxBpm = 200.0;
@@ -66,5 +75,5 @@ private:
     float  bpm        = 0.0f;
     float  confidence = 0.0f;
 
-    std::vector<float> scratch;   // linearised, mean-removed ODF window
+    std::vector<float> scratch;     // linearised, mean-removed ODF window
 };

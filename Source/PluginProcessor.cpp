@@ -13,6 +13,7 @@ KeyDetectorAudioProcessor::KeyDetectorAudioProcessor()
     smoothingParam = apvts.getRawParameterValue ("smoothing");
     freezeParam    = apvts.getRawParameterValue ("freeze");
     tunerModeParam = apvts.getRawParameterValue ("tunerMode");
+    tempoMultParam = apvts.getRawParameterValue ("tempoMult");
 
     publishedSpectrum.assign ((size_t) numBins, 0.0f);
 }
@@ -41,6 +42,11 @@ KeyDetectorAudioProcessor::createParameterLayout()
     layout.add (std::make_unique<AudioParameterChoice> (
         ParameterID { "tunerMode", 1 }, "Tuner Mode",
         juce::StringArray { "Auto", "Pitch", "Peak" }, 0));
+
+    // Tempo octave multiplier for the BPM read-out (fixes half/double-time).
+    layout.add (std::make_unique<AudioParameterChoice> (
+        ParameterID { "tempoMult", 1 }, "Tempo x",
+        juce::StringArray { "x0.5", "x1", "x2" }, 1));
 
     return layout;
 }
@@ -323,7 +329,9 @@ void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
         // Estimate tempo (BPM) from the audio itself (not the host clock).
         tempoEstimator.processMono (monoScratch.data(), numSamples);
-        publishedBpm.store     ((double) tempoEstimator.getBpm());
+        const int   mi = tempoMultParam != nullptr ? (int) (tempoMultParam->load() + 0.5f) : 1;
+        const float mult = mi == 0 ? 0.5f : (mi == 2 ? 2.0f : 1.0f);
+        publishedBpm.store     ((double) (tempoEstimator.getBpm() * mult));
         publishedBpmConf.store (tempoEstimator.getConfidence());
     }
 }

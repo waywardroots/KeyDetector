@@ -28,6 +28,13 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     bpmLabel.setText ("-- BPM", juce::dontSendNotification);
     addAndMakeVisible (bpmLabel);
 
+    // BPM octave multiplier (fixes half/double-time), next to the tempo readout.
+    tempoMultBox.addItemList ({ "x0.5", "x1", "x2" }, 1);
+    tempoMultBox.setTooltip ("Halve / double the detected BPM");
+    addAndMakeVisible (tempoMultBox);
+    tempoMultAttachment = std::make_unique<ComboBoxAttachment> (
+        processorRef.apvts, "tempoMult", tempoMultBox);
+
     // --- Controls ---------------------------------------------------------------
     smoothingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     smoothingSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
@@ -88,8 +95,13 @@ void KeyDetectorAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (12);
 
-    // Tempo readout in the header (top-right); the title is drawn on the left.
-    bpmLabel.setBounds (area.getX(), 10, area.getWidth(), 24);
+    // Header row (top-right): BPM read-out + its ×½/×1/×2 octave selector.
+    {
+        auto header = juce::Rectangle<int> (area.getX(), 10, area.getWidth(), 26);
+        tempoMultBox.setBounds (header.removeFromRight (64));
+        header.removeFromRight (8);
+        bpmLabel.setBounds (header.removeFromRight (140));
+    }
 
     area.removeFromTop (40); // header
 
