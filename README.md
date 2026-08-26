@@ -13,6 +13,12 @@ Builds as **VST3**, **AU** (macOS) and **Standalone** (Windows / macOS / Linux).
 
 ![Key Detector UI](docs/ui.png)
 
+The window is **resizable** — drag the bottom-right corner (or the window edge in
+hosts that allow it) and the whole UI scales uniformly (a fixed aspect ratio is
+kept, from 0.75× to 2×):
+
+![Resized](docs/resized.png)
+
 The tuner lights up when a single note is played (it stays idle on full mixes):
 
 ![Tuner](docs/tuner.png)

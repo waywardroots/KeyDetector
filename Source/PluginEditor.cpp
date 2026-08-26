@@ -4,41 +4,58 @@
 KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
-    addAndMakeVisible (spectrum);
-    addAndMakeVisible (chroma);
-    addAndMakeVisible (tuner);
+    // Everything lives inside `content`, which is laid out at the fixed design size
+    // and scaled to fill the (resizable) editor.
+    addAndMakeVisible (content);
+    content.onPaint = [] (juce::Graphics& g)
+    {
+        g.fillAll (juce::Colour (0xff0d0f14));
+
+        g.setColour (juce::Colours::white.withAlpha (0.85f));
+        g.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
+        g.drawText ("Key Detector", 16, 10, 300, 24, juce::Justification::left, false);
+
+        g.setColour (juce::Colours::white.withAlpha (0.35f));
+        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.drawText ("chroma / Krumhansl-Schmuckler key estimation  +  tuner  +  BPM",
+                    16, 32, 460, 18, juce::Justification::left, false);
+    };
+
+    content.addAndMakeVisible (spectrum);
+    content.addAndMakeVisible (chroma);
+    content.addAndMakeVisible (tuner);
 
     // --- Big detected-key readout ----------------------------------------------
     keyLabel.setJustificationType (juce::Justification::centred);
     keyLabel.setFont (juce::Font (juce::FontOptions (40.0f, juce::Font::bold)));
     keyLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     keyLabel.setText ("--", juce::dontSendNotification);
-    addAndMakeVisible (keyLabel);
+    content.addAndMakeVisible (keyLabel);
 
     detailLabel.setJustificationType (juce::Justification::centred);
     detailLabel.setFont (juce::Font (juce::FontOptions (13.0f)));
     detailLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
     detailLabel.setText ("waiting for audio...", juce::dontSendNotification);
-    addAndMakeVisible (detailLabel);
+    content.addAndMakeVisible (detailLabel);
 
-    // Host tempo readout (top-right of the header).
+    // Tempo readout (top-right of the header).
     bpmLabel.setJustificationType (juce::Justification::centredRight);
     bpmLabel.setFont (juce::Font (juce::FontOptions (18.0f, juce::Font::bold)));
     bpmLabel.setColour (juce::Label::textColourId, juce::Colour (0xff2bd1a4));
     bpmLabel.setText ("-- BPM", juce::dontSendNotification);
-    addAndMakeVisible (bpmLabel);
+    content.addAndMakeVisible (bpmLabel);
 
     // BPM octave multiplier (fixes half/double-time; also rescales a held BPM).
     tempoMultBox.addItemList ({ "x0.5", "x1", "x2" }, 1);
     tempoMultBox.setTooltip ("Halve / double the BPM (also rescales a held value)");
-    addAndMakeVisible (tempoMultBox);
+    content.addAndMakeVisible (tempoMultBox);
     tempoMultAttachment = std::make_unique<ComboBoxAttachment> (
         processorRef.apvts, "tempoMult", tempoMultBox);
 
     // Tap tempo (shortcut: T): derive BPM from the spacing of button presses.
     tapButton.setTooltip ("Tap tempo (shortcut: T)");
     tapButton.addShortcut (juce::KeyPress ('t'));
-    addAndMakeVisible (tapButton);
+    content.addAndMakeVisible (tapButton);
     tapButton.onClick = [this]
     {
         const double now = juce::Time::getMillisecondCounterHiRes();
@@ -57,7 +74,6 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
                 tappedBpm = juce::jlimit (30.0, 300.0, 60000.0 / avg);
         }
 
-        // Tapping releases Hold and takes over the read-out.
         holdButton.setToggleState (false, juce::dontSendNotification);
     };
 
@@ -65,7 +81,7 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     holdButton.setClickingTogglesState (true);
     holdButton.setTooltip ("Freeze the BPM (shortcut: H). Then use -/+ and x0.5/x1/x2.");
     holdButton.addShortcut (juce::KeyPress ('h'));
-    addAndMakeVisible (holdButton);
+    content.addAndMakeVisible (holdButton);
     holdButton.onClick = [this]
     {
         if (holdButton.getToggleState())
@@ -92,44 +108,52 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     bpmUpButton  .setTooltip ("Fine-tune BPM up (+0.1)");
     bpmDownButton.onClick = [nudge] { nudge (-0.1); };
     bpmUpButton  .onClick = [nudge] { nudge (+0.1); };
-    addAndMakeVisible (bpmDownButton);
-    addAndMakeVisible (bpmUpButton);
+    content.addAndMakeVisible (bpmDownButton);
+    content.addAndMakeVisible (bpmUpButton);
 
     setWantsKeyboardFocus (true); // so the T / H shortcuts are received
 
     // --- Controls ---------------------------------------------------------------
     smoothingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     smoothingSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
-    addAndMakeVisible (smoothingSlider);
+    content.addAndMakeVisible (smoothingSlider);
     smoothingAttachment = std::make_unique<SliderAttachment> (
         processorRef.apvts, "smoothing", smoothingSlider);
 
     smoothingLabel.setJustificationType (juce::Justification::centred);
     smoothingLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
     smoothingLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
-    addAndMakeVisible (smoothingLabel);
+    content.addAndMakeVisible (smoothingLabel);
 
-    addAndMakeVisible (freezeButton);
+    content.addAndMakeVisible (freezeButton);
     freezeAttachment = std::make_unique<ButtonAttachment> (
         processorRef.apvts, "freeze", freezeButton);
 
     resetButton.onClick = [this] { processorRef.requestReset(); };
-    addAndMakeVisible (resetButton);
+    content.addAndMakeVisible (resetButton);
 
     // Tuner mode selector (Auto / Pitch / Peak).
     tunerModeBox.addItemList ({ "Auto", "Pitch", "Peak" }, 1);
-    addAndMakeVisible (tunerModeBox);
+    content.addAndMakeVisible (tunerModeBox);
     tunerModeAttachment = std::make_unique<ComboBoxAttachment> (
         processorRef.apvts, "tunerMode", tunerModeBox);
 
     tunerModeLabel.setJustificationType (juce::Justification::centred);
     tunerModeLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
     tunerModeLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
-    addAndMakeVisible (tunerModeLabel);
+    content.addAndMakeVisible (tunerModeLabel);
 
     spectrumScratch.reserve ((size_t) KeyDetectorAudioProcessor::numBins);
 
-    setSize (640, 500);
+    // Make the editor resizable (corner grip + host edge-resize), keeping the
+    // original aspect ratio so the scaled layout always fits.
+    setResizable (true, true);
+    setResizeLimits (designWidth * 3 / 4, designHeight * 3 / 4,  // 0.75x
+                     designWidth * 2,     designHeight * 2);     // 2x
+    if (auto* c = getConstrainer())
+        c->setFixedAspectRatio ((double) designWidth / (double) designHeight);
+
+    setSize (designWidth, designHeight);
     startTimerHz (30);
 }
 
@@ -141,21 +165,21 @@ KeyDetectorAudioProcessorEditor::~KeyDetectorAudioProcessorEditor()
 //==============================================================================
 void KeyDetectorAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff0d0f14));
-
-    g.setColour (juce::Colours::white.withAlpha (0.85f));
-    g.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
-    g.drawText ("Key Detector", 16, 10, 300, 24, juce::Justification::left, false);
-
-    g.setColour (juce::Colours::white.withAlpha (0.35f));
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
-    g.drawText ("chroma / Krumhansl-Schmuckler key estimation  +  tuner  +  BPM",
-                16, 32, 460, 18, juce::Justification::left, false);
+    g.fillAll (juce::Colour (0xff0d0f14)); // behind the scaled content
 }
 
 void KeyDetectorAudioProcessorEditor::resized()
 {
-    auto area = getLocalBounds().reduced (12);
+    // Scale the fixed-size content to fill the current (resizable) editor.
+    const float scale = (float) getWidth() / (float) designWidth;
+    content.setBounds (0, 0, designWidth, designHeight);
+    content.setTransform (juce::AffineTransform::scale (scale));
+    layoutContent();
+}
+
+void KeyDetectorAudioProcessorEditor::layoutContent()
+{
+    auto area = juce::Rectangle<int> (0, 0, designWidth, designHeight).reduced (12);
 
     // Header row (top-right): [Tap][Hold]  [-] BPM [+]  [×½/×1/×2]
     {
@@ -185,24 +209,18 @@ void KeyDetectorAudioProcessorEditor::resized()
         freezeButton.setBounds (c.removeFromLeft (80).withSizeKeepingCentre (80, 30));
         resetButton .setBounds (c.removeFromLeft (76).withSizeKeepingCentre (72, 30));
 
-        // Tuner mode selector.
         c.removeFromLeft (10);
         auto tm = c.removeFromLeft (92);
         tunerModeLabel.setBounds (tm.removeFromBottom (16));
         tunerModeBox.setBounds (tm.withSizeKeepingCentre (92, 26));
 
-        // Key readout occupies the rest of the strip.
         keyLabel.setBounds (c.removeFromTop (46));
         detailLabel.setBounds (c);
     }
 
     area.removeFromBottom (10);
-
-    // Tuner strip.
     tuner.setBounds (area.removeFromBottom (68));
     area.removeFromBottom (10);
-
-    // Chroma bars, spectrum fills the rest.
     chroma.setBounds (area.removeFromBottom (110));
     area.removeFromBottom (10);
     spectrum.setBounds (area);

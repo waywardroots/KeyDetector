@@ -21,9 +21,24 @@ public:
 
 private:
     void timerCallback() override;
+    void layoutContent();             // lay children out in design coordinates
     double tempoMultFactor() const;   // 0.5 / 1 / 2 from the selector
 
+    // The UI is laid out at a fixed "design size" and the whole thing is scaled to
+    // fill the (resizable) editor, so every element — including fonts — scales.
+    static constexpr int designWidth  = 640;
+    static constexpr int designHeight = 500;
+
+    // A plain container whose painting is delegated to a lambda (draws the
+    // background + title); it holds every child and is scaled by the editor.
+    struct Content : juce::Component
+    {
+        std::function<void (juce::Graphics&)> onPaint;
+        void paint (juce::Graphics& g) override { if (onPaint) onPaint (g); }
+    };
+
     KeyDetectorAudioProcessor& processorRef;
+    Content content;
 
     SpectrumDisplay spectrum;
     ChromaDisplay   chroma;
