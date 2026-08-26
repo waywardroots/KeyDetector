@@ -14,11 +14,6 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
         g.setColour (juce::Colours::white.withAlpha (0.85f));
         g.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
         g.drawText ("Key Detector", 16, 10, 300, 24, juce::Justification::left, false);
-
-        g.setColour (juce::Colours::white.withAlpha (0.35f));
-        g.setFont (juce::Font (juce::FontOptions (12.0f)));
-        g.drawText ("chroma / Krumhansl-Schmuckler key estimation  +  tuner  +  BPM",
-                    16, 32, 460, 18, juce::Justification::left, false);
     };
 
     content.addAndMakeVisible (spectrum);
