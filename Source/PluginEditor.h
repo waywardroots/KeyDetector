@@ -21,6 +21,7 @@ public:
 
 private:
     void timerCallback() override;
+    double tempoMultFactor() const;   // 0.5 / 1 / 2 from the selector
 
     KeyDetectorAudioProcessor& processorRef;
 
@@ -42,6 +43,8 @@ private:
     juce::ComboBox     tempoMultBox;   // BPM ×½ / ×1 / ×2
     juce::TextButton   tapButton  { "Tap" };
     juce::TextButton   holdButton { "Hold" };
+    juce::TextButton   bpmDownButton { "-" };
+    juce::TextButton   bpmUpButton   { "+" };
 
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
@@ -53,12 +56,13 @@ private:
 
     std::vector<float> spectrumScratch; // reused each timer tick
 
-    // Tap-tempo + BPM hold state (UI-side).
+    // Tap-tempo + BPM hold/fine-tune state (UI-side).
     std::vector<double> tapTimes;        // recent tap timestamps (ms)
-    double  lastTapMs   = 0.0;
-    double  tappedBpm   = 0.0;
-    juce::String lastLiveBpmText { "-- BPM" };
-    juce::String heldBpmText     { "-- BPM" };
+    double  lastTapMs       = 0.0;
+    double  tappedBpm       = 0.0;
+    double  currentLiveBase = 0.0;       // latest live (pre-multiplier) BPM
+    double  heldBaseBpm     = 0.0;       // base captured when Hold engaged
+    double  fineOffset      = 0.0;       // +/- fine-tune added while held
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (KeyDetectorAudioProcessorEditor)
 };

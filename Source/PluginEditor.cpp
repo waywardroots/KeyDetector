@@ -28,14 +28,16 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     bpmLabel.setText ("-- BPM", juce::dontSendNotification);
     addAndMakeVisible (bpmLabel);
 
-    // BPM octave multiplier (fixes half/double-time), next to the tempo readout.
+    // BPM octave multiplier (fixes half/double-time; also rescales a held BPM).
     tempoMultBox.addItemList ({ "x0.5", "x1", "x2" }, 1);
-    tempoMultBox.setTooltip ("Halve / double the detected BPM");
+    tempoMultBox.setTooltip ("Halve / double the BPM (also rescales a held value)");
     addAndMakeVisible (tempoMultBox);
     tempoMultAttachment = std::make_unique<ComboBoxAttachment> (
         processorRef.apvts, "tempoMult", tempoMultBox);
 
-    // Tap tempo: derive BPM from the spacing of button presses.
+    // Tap tempo (shortcut: T): derive BPM from the spacing of button presses.
+    tapButton.setTooltip ("Tap tempo (shortcut: T)");
+    tapButton.addShortcut (juce::KeyPress ('t'));
     addAndMakeVisible (tapButton);
     tapButton.onClick = [this]
     {
@@ -59,14 +61,41 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
         holdButton.setToggleState (false, juce::dontSendNotification);
     };
 
-    // Hold: freeze the BPM read-out at its current value.
+    // Hold (shortcut: H): freeze the BPM read-out; captures the current base value.
     holdButton.setClickingTogglesState (true);
+    holdButton.setTooltip ("Freeze the BPM (shortcut: H). Then use -/+ and x0.5/x1/x2.");
+    holdButton.addShortcut (juce::KeyPress ('h'));
     addAndMakeVisible (holdButton);
     holdButton.onClick = [this]
     {
         if (holdButton.getToggleState())
-            heldBpmText = lastLiveBpmText; // capture whatever is shown right now
+        {
+            heldBaseBpm = currentLiveBase > 0.0 ? currentLiveBase
+                        : (tappedBpm > 0.0 ? tappedBpm : 120.0);
+            fineOffset  = 0.0;
+        }
     };
+
+    // Fine-tune -/+ (engages Hold if not already held).
+    auto nudge = [this] (double delta)
+    {
+        if (! holdButton.getToggleState())
+        {
+            heldBaseBpm = currentLiveBase > 0.0 ? currentLiveBase
+                        : (tappedBpm > 0.0 ? tappedBpm : 120.0);
+            fineOffset  = 0.0;
+            holdButton.setToggleState (true, juce::dontSendNotification);
+        }
+        fineOffset += delta;
+    };
+    bpmDownButton.setTooltip ("Fine-tune BPM down (-0.1)");
+    bpmUpButton  .setTooltip ("Fine-tune BPM up (+0.1)");
+    bpmDownButton.onClick = [nudge] { nudge (-0.1); };
+    bpmUpButton  .onClick = [nudge] { nudge (+0.1); };
+    addAndMakeVisible (bpmDownButton);
+    addAndMakeVisible (bpmUpButton);
+
+    setWantsKeyboardFocus (true); // so the T / H shortcuts are received
 
     // --- Controls ---------------------------------------------------------------
     smoothingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
@@ -128,16 +157,18 @@ void KeyDetectorAudioProcessorEditor::resized()
 {
     auto area = getLocalBounds().reduced (12);
 
-    // Header row (top-right): [Tap][Hold]  BPM  [×½/×1/×2]
+    // Header row (top-right): [Tap][Hold]  [-] BPM [+]  [×½/×1/×2]
     {
         auto header = juce::Rectangle<int> (area.getX(), 10, area.getWidth(), 26);
-        tempoMultBox.setBounds (header.removeFromRight (58));
+        tempoMultBox.setBounds (header.removeFromRight (52));
         header.removeFromRight (6);
-        bpmLabel.setBounds (header.removeFromRight (116));
+        bpmUpButton.setBounds (header.removeFromRight (24));
+        bpmLabel.setBounds (header.removeFromRight (96));
+        bpmDownButton.setBounds (header.removeFromRight (24));
         header.removeFromRight (8);
-        holdButton.setBounds (header.removeFromRight (46));
+        holdButton.setBounds (header.removeFromRight (44));
         header.removeFromRight (4);
-        tapButton.setBounds (header.removeFromRight (44));
+        tapButton.setBounds (header.removeFromRight (40));
     }
 
     area.removeFromTop (40); // header
@@ -190,33 +221,37 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     chroma.setTonic (est.pitchClass, est.isMinor);
     chroma.repaint();
 
-    // Tempo read-out: Hold (frozen) > Tap (recent taps) > audio estimate.
-    // Source is shown by colour: green = audio, blue = tap, amber = hold.
-    const double now = juce::Time::getMillisecondCounterHiRes();
+    // Tempo read-out.  Colour: green = audio, blue = tapped, amber = held.
+    // The ×½/×1/×2 multiplier and the -/+ fine-tune apply to whatever the base is
+    // (live estimate/tap, or the value captured when Hold engaged).
+    const double now      = juce::Time::getMillisecondCounterHiRes();
     const bool   tapValid = tappedBpm > 0.0 && (now - lastTapMs) < 5000.0;
+    const double factor   = tempoMultFactor();
 
-    juce::Colour bpmColour = juce::Colour (0xff2bd1a4);
-    if (tapValid)
-    {
-        lastLiveBpmText = juce::String (tappedBpm, 1) + " BPM";
-        bpmColour = juce::Colour (0xff6ea8ff);
-    }
-    else
-    {
-        const double bpm = processorRef.getBpm();
-        lastLiveBpmText = (bpm > 0.0 && processorRef.getBpmConfidence() >= 0.25f)
-                              ? juce::String (bpm, 1) + " BPM" : "-- BPM";
-    }
+    const double audioBpm = processorRef.getBpm();
+    const bool   audioOk  = audioBpm > 0.0 && processorRef.getBpmConfidence() >= 0.25f;
+    currentLiveBase = tapValid ? tappedBpm : (audioOk ? audioBpm : 0.0);
 
+    juce::String txt;
+    juce::Colour bpmColour;
     if (holdButton.getToggleState())
     {
-        bpmLabel.setText (heldBpmText, juce::dontSendNotification);
-        bpmColour = juce::Colour (0xffffc857);
+        const double v = juce::jlimit (20.0, 400.0, heldBaseBpm * factor + fineOffset);
+        txt = juce::String (v, 1) + " BPM";
+        bpmColour = juce::Colour (0xffffc857);            // amber = held
+    }
+    else if (currentLiveBase > 0.0)
+    {
+        txt = juce::String (currentLiveBase * factor, 1) + " BPM";
+        bpmColour = tapValid ? juce::Colour (0xff6ea8ff)  // blue = tapped
+                             : juce::Colour (0xff2bd1a4);  // green = audio
     }
     else
     {
-        bpmLabel.setText (lastLiveBpmText, juce::dontSendNotification);
+        txt = "-- BPM";
+        bpmColour = juce::Colours::white.withAlpha (0.4f);
     }
+    bpmLabel.setText (txt, juce::dontSendNotification);
     bpmLabel.setColour (juce::Label::textColourId, bpmColour);
 
     // Tuner (falls back to the loudest spectral peak for percussion/inharmonic input).
@@ -244,5 +279,15 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
         keyLabel.setText ("--", juce::dontSendNotification);
         detailLabel.setText (chromaSum > 1.0e-4f ? "no clear key" : "waiting for audio...",
                              juce::dontSendNotification);
+    }
+}
+
+double KeyDetectorAudioProcessorEditor::tempoMultFactor() const
+{
+    switch (tempoMultBox.getSelectedId()) // ids: 1=x0.5, 2=x1, 3=x2
+    {
+        case 1:  return 0.5;
+        case 3:  return 2.0;
+        default: return 1.0;
     }
 }

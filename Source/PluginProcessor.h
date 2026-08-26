@@ -165,7 +165,7 @@ private:
     std::atomic<float>* smoothingParam = nullptr;
     std::atomic<float>* freezeParam    = nullptr;
     std::atomic<float>* tunerModeParam = nullptr; // 0=Auto, 1=Pitch, 2=Peak
-    std::atomic<float>* tempoMultParam = nullptr; // 0=x0.5, 1=x1, 2=x2
+    // (tempoMult is applied in the editor so it can also modify a held BPM.)
 
     // ---- Published analysis state (audio thread -> GUI thread) ------------------
     std::array<std::atomic<float>, 12> publishedChroma {};

@@ -123,10 +123,12 @@ range, gated by an onset-activity (crest) test so sustained material reads
 `-- BPM` instead of a spurious tempo.
 
 Controls next to the read-out:
-- **Tap** – tap in time; the BPM is derived from your tap spacing (overrides the
-  estimate for ~5 s; blue text).
-- **Hold** – freeze the current read-out at its value (amber text).
-- **×½ / ×1 / ×2** – lock the tempo octave if a track reads half/double-time.
+- **Tap** *(shortcut: T)* – tap in time; the BPM is derived from your tap spacing
+  (overrides the estimate for ~5 s; blue text).
+- **Hold** *(shortcut: H)* – freeze the read-out at its current value (amber text).
+- **− / +** – fine-tune the BPM by ±0.1 (engages Hold automatically).
+- **×½ / ×1 / ×2** – rescale the BPM (fixes half/double-time); while held, this
+  rescales the held value too.
 
 Colour code: green = estimated from audio, blue = tapped, amber = held. See
 `Source/TempoEstimator.*` and `tests/TempoEstimatorTest.cpp`.

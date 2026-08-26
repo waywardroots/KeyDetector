@@ -13,7 +13,6 @@ KeyDetectorAudioProcessor::KeyDetectorAudioProcessor()
     smoothingParam = apvts.getRawParameterValue ("smoothing");
     freezeParam    = apvts.getRawParameterValue ("freeze");
     tunerModeParam = apvts.getRawParameterValue ("tunerMode");
-    tempoMultParam = apvts.getRawParameterValue ("tempoMult");
 
     publishedSpectrum.assign ((size_t) numBins, 0.0f);
 }
@@ -327,11 +326,11 @@ void KeyDetectorAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             pushSampleToFifo (mono);
         }
 
-        // Estimate tempo (BPM) from the audio itself (not the host clock).
+        // Estimate tempo (BPM) from the audio itself (not the host clock).  The
+        // ×½/×1/×2 multiplier and fine-tune are applied in the editor so they can
+        // also modify a held value.
         tempoEstimator.processMono (monoScratch.data(), numSamples);
-        const int   mi = tempoMultParam != nullptr ? (int) (tempoMultParam->load() + 0.5f) : 1;
-        const float mult = mi == 0 ? 0.5f : (mi == 2 ? 2.0f : 1.0f);
-        publishedBpm.store     ((double) (tempoEstimator.getBpm() * mult));
+        publishedBpm.store     ((double) tempoEstimator.getBpm());
         publishedBpmConf.store (tempoEstimator.getConfidence());
     }
 }
