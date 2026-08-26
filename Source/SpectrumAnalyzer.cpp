@@ -26,6 +26,13 @@ float SpectrumDisplay::freqToX (float hz) const noexcept
     return (float) getWidth() * (std::log (f) - lo) / (hi - lo);
 }
 
+float SpectrumDisplay::xToFreq (float x) const noexcept
+{
+    const float lo = std::log (minFreq), hi = std::log (maxFreq);
+    const float t  = juce::jlimit (0.0f, 1.0f, x / (float) juce::jmax (1, getWidth()));
+    return std::exp (lo + t * (hi - lo));
+}
+
 float SpectrumDisplay::dbToY (float db) const noexcept
 {
     return juce::jmap (juce::jlimit (minDb, maxDb, db), minDb, maxDb,
@@ -167,6 +174,101 @@ void SpectrumDisplay::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white.withAlpha (0.35f));
     g.strokePath (peak, juce::PathStrokeType (1.0f));
+
+    paintHoverReadout (g);
+}
+
+void SpectrumDisplay::mouseMove (const juce::MouseEvent& e)
+{
+    hoverX = e.x;
+    hovering = true;
+    repaint();
+}
+
+void SpectrumDisplay::mouseExit (const juce::MouseEvent&)
+{
+    hovering = false;
+    repaint();
+}
+
+void SpectrumDisplay::paintHoverReadout (juce::Graphics& g)
+{
+    if (! hovering || mags.size() < 4 || sampleRate <= 0.0)
+        return;
+
+    const float h = (float) getHeight();
+    const int   numBins = (int) mags.size();
+    const float binHz   = (float) (sampleRate / (2.0 * numBins));
+
+    // Snap to the loudest FFT bin within a few pixels of the cursor.
+    const float snapPx = 16.0f;
+    int   bestK   = -1;
+    float bestMag = -1.0f;
+    for (int k = 1; k < numBins; ++k)
+    {
+        const float f = k * binHz;
+        if (f < minFreq || f > maxFreq) continue;
+        if (std::abs (freqToX (f) - (float) hoverX) <= snapPx && mags[(size_t) k] > bestMag)
+        {
+            bestMag = mags[(size_t) k];
+            bestK   = k;
+        }
+    }
+
+    float freq;
+    bool  onPeak = false;
+    if (bestK > 0 && bestK < numBins - 1)
+    {
+        // Parabolic (log-magnitude) interpolation for a precise peak frequency.
+        const double a = std::log ((double) mags[(size_t) (bestK - 1)] + 1.0e-12);
+        const double b = std::log ((double) mags[(size_t) bestK]       + 1.0e-12);
+        const double c = std::log ((double) mags[(size_t) (bestK + 1)] + 1.0e-12);
+        const double denom = a - 2.0 * b + c;
+        const double delta = std::abs (denom) > 1.0e-12 ? 0.5 * (a - c) / denom : 0.0;
+        freq  = (float) (((double) bestK + delta) * binHz);
+        onPeak = true;
+    }
+    else
+    {
+        freq = xToFreq ((float) hoverX); // no peak nearby: use the cursor frequency
+    }
+
+    int midi, pc, oct; double cents;
+    PitchDetector::frequencyToNote ((double) freq, midi, pc, oct, cents);
+    const juce::String note = PitchDetector::noteName (midi);
+
+    const float x = freqToX (freq);
+
+    // Crosshair line + peak marker.
+    g.setColour (juce::Colours::white.withAlpha (0.35f));
+    g.drawVerticalLine ((int) x, 0.0f, h);
+
+    if (onPeak)
+    {
+        const float db = bestMag > 1.0e-9f ? 20.0f * std::log10 (bestMag / refPeak) : minDb;
+        const float y  = dbToY (db);
+        g.setColour (juce::Colour (0xffffc857));
+        g.fillEllipse (x - 3.0f, y - 3.0f, 6.0f, 6.0f);
+    }
+
+    // Read-out label: note (with octave), frequency, cents.
+    const juce::String txt = note + "   " + juce::String (freq, 1) + " Hz   "
+                           + (cents >= 0.0 ? "+" : "") + juce::String ((int) std::lround (cents)) + " cents";
+
+    g.setFont (12.0f);
+    const int tw = juce::jlimit (130, 240, (int) txt.length() * 7 + 16);
+    const int th = 20;
+    int lx = (int) x + 8;
+    if (lx + tw > getWidth()) lx = (int) x - 8 - tw; // flip to the left near the right edge
+    lx = juce::jlimit (2, juce::jmax (2, getWidth() - tw - 2), lx);
+    const int ly = 4;
+
+    g.setColour (juce::Colour (0xff0d0f14).withAlpha (0.92f));
+    g.fillRoundedRectangle ((float) lx, (float) ly, (float) tw, (float) th, 4.0f);
+    g.setColour (juce::Colour (0xff2bd1a4).withAlpha (0.6f));
+    g.drawRoundedRectangle ((float) lx, (float) ly, (float) tw, (float) th, 4.0f, 1.0f);
+    g.setColour (juce::Colours::white);
+    g.drawText (txt, lx + 7, ly, tw - 12, th, juce::Justification::centredLeft, false);
 }
 
 //==============================================================================

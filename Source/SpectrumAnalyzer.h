@@ -26,10 +26,18 @@ public:
     void paint (juce::Graphics& g) override;
     void resized() override;
 
+    void mouseMove  (const juce::MouseEvent& e) override;
+    void mouseExit  (const juce::MouseEvent& e) override;
+
+    /** Force the hover read-out at a given x (used for tests / documentation shots). */
+    void showHoverAt (int x) { hoverX = x; hovering = true; repaint(); }
+
 private:
     void rebuildColumns();                 // resample mags -> per-pixel columns
     float freqToX (float hz) const noexcept;
+    float xToFreq (float x)  const noexcept;
     float dbToY   (float db) const noexcept;
+    void  paintHoverReadout (juce::Graphics& g);
 
     std::vector<float> mags;               // latest raw magnitudes
     double sampleRate = 44100.0;
@@ -37,6 +45,9 @@ private:
     std::vector<float> colSmooth;          // per-pixel smoothed magnitude (linear)
     std::vector<float> colPeak;            // per-pixel peak-hold magnitude (linear)
     float refPeak = 1.0e-6f;               // running normalisation reference
+
+    int  hoverX    = -1;                    // mouse x while hovering (-1 = none)
+    bool hovering  = false;
 
     static constexpr float minFreq = 20.0f;
     static constexpr float maxFreq = 20000.0f;
