@@ -1,7 +1,24 @@
 #include "SpectrumAnalyzer.h"
 #include "PitchDetector.h"
+#include "ConsoleLookAndFeel.h"
 
 #include <cmath>
+
+namespace
+{
+    // A recessed "screen" panel (dark inset with a bevel) used behind each meter.
+    void drawScreen (juce::Graphics& g, juce::Rectangle<float> b)
+    {
+        g.setColour (juce::Colour (console::screen));
+        g.fillRoundedRectangle (b, 4.0f);
+        g.setColour (juce::Colours::black.withAlpha (0.40f)); // inner top shadow
+        g.drawLine (b.getX() + 3.0f, b.getY() + 1.5f, b.getRight() - 3.0f, b.getY() + 1.5f, 1.5f);
+        g.setColour (juce::Colours::white.withAlpha (0.04f)); // bottom bevel highlight
+        g.drawLine (b.getX() + 3.0f, b.getBottom() - 1.0f, b.getRight() - 3.0f, b.getBottom() - 1.0f, 1.0f);
+        g.setColour (juce::Colour (console::edge).withAlpha (0.7f));
+        g.drawRoundedRectangle (b.reduced (0.5f), 4.0f, 1.0f);
+    }
+}
 
 //==============================================================================
 void SpectrumDisplay::setSpectrum (const std::vector<float>& magnitudes, double newSampleRate)
@@ -112,8 +129,7 @@ void SpectrumDisplay::paint (juce::Graphics& g)
     const float w = bounds.getWidth();
     const float h = bounds.getHeight();
 
-    g.setColour (juce::Colour (0xff141821));
-    g.fillRoundedRectangle (bounds, 4.0f);
+    drawScreen (g, bounds);
 
     // ---- dB grid (horizontal) ---------------------------------------------------
     g.setFont (10.0f);
@@ -159,11 +175,11 @@ void SpectrumDisplay::paint (juce::Graphics& g)
     filled.lineTo (0.0f, h);
     filled.closeSubPath();
 
-    g.setGradientFill (juce::ColourGradient (juce::Colour (0xff2bd1a4).withAlpha (0.35f), 0, 0,
-                                             juce::Colour (0xff2bd1a4).withAlpha (0.02f), 0, h, false));
+    g.setGradientFill (juce::ColourGradient (juce::Colour (console::meter).withAlpha (0.35f), 0, 0,
+                                             juce::Colour (console::meter).withAlpha (0.02f), 0, h, false));
     g.fillPath (filled);
 
-    g.setColour (juce::Colour (0xff36e0b0));
+    g.setColour (juce::Colour (console::meter));
     g.strokePath (path, juce::PathStrokeType (1.4f));
 
     // ---- peak-hold trace --------------------------------------------------------
@@ -265,7 +281,7 @@ void SpectrumDisplay::paintHoverReadout (juce::Graphics& g)
 
     g.setColour (juce::Colour (0xff0d0f14).withAlpha (0.92f));
     g.fillRoundedRectangle ((float) lx, (float) ly, (float) tw, (float) th, 4.0f);
-    g.setColour (juce::Colour (0xff2bd1a4).withAlpha (0.6f));
+    g.setColour (juce::Colour (console::meter).withAlpha (0.6f));
     g.drawRoundedRectangle ((float) lx, (float) ly, (float) tw, (float) th, 4.0f, 1.0f);
     g.setColour (juce::Colours::white);
     g.drawText (txt, lx + 7, ly, tw - 12, th, juce::Justification::centredLeft, false);
@@ -279,8 +295,7 @@ void ChromaDisplay::paint (juce::Graphics& g)
 
     auto bounds = getLocalBounds().toFloat();
 
-    g.setColour (juce::Colour (0xff141821));
-    g.fillRoundedRectangle (bounds, 4.0f);
+    drawScreen (g, bounds);
 
     const float labelH = 16.0f;
     const float w      = bounds.getWidth();
@@ -302,7 +317,7 @@ void ChromaDisplay::paint (juce::Graphics& g)
         const bool isTonic = (i == tonicPc);
         g.setColour (isTonic ? (isMinor ? juce::Colour (0xff6ea8ff)
                                         : juce::Colour (0xffffc857))
-                             : juce::Colour (0xff2bd1a4).withAlpha (0.75f));
+                             : juce::Colour (console::meter).withAlpha (0.75f));
         g.fillRoundedRectangle (bar, 2.0f);
 
         g.setColour (isTonic ? juce::Colours::white : juce::Colours::white.withAlpha (0.55f));
@@ -317,8 +332,7 @@ void TunerDisplay::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
 
-    g.setColour (juce::Colour (0xff141821));
-    g.fillRoundedRectangle (bounds, 4.0f);
+    drawScreen (g, bounds);
 
     auto area = bounds.reduced (8.0f);
 

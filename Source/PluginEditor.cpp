@@ -4,16 +4,42 @@
 KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
+    setLookAndFeel (&consoleLnf);
+
     // Everything lives inside `content`, which is laid out at the fixed design size
     // and scaled to fill the (resizable) editor.
     addAndMakeVisible (content);
     content.onPaint = [] (juce::Graphics& g)
     {
-        g.fillAll (juce::Colour (0xff0d0f14));
+        const int W = designWidth, H = designHeight;
 
-        g.setColour (juce::Colours::white.withAlpha (0.85f));
-        g.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
-        g.drawText ("Key Detector", 16, 10, 300, 24, juce::Justification::left, false);
+        // Brushed-metal panel gradient.
+        g.setGradientFill (juce::ColourGradient (juce::Colour (console::bgTop), 0.0f, 0.0f,
+                                                 juce::Colour (console::bgBottomC), 0.0f, (float) H, false));
+        g.fillRect (0, 0, W, H);
+        g.setColour (juce::Colours::white.withAlpha (0.012f));
+        for (int y = 48; y < H; y += 2)
+            g.drawHorizontalLine (y, 0.0f, (float) W);
+
+        // Title bar.
+        g.setGradientFill (juce::ColourGradient (juce::Colour (console::barTop), 0.0f, 0.0f,
+                                                 juce::Colour (console::barBottom), 0.0f, 44.0f, false));
+        g.fillRect (0, 0, W, 44);
+        g.setColour (juce::Colour (console::accent));
+        g.fillRect (0, 44, W, 2);
+        g.setColour (juce::Colour (console::shadow));
+        g.fillRect (0, 46, W, 1);
+
+        // Logo mark + wordmark.
+        g.setColour (juce::Colour (console::accent));
+        g.fillRoundedRectangle (16.0f, 13.0f, 18.0f, 18.0f, 3.0f);
+        g.setColour (juce::Colour (0xff101318));
+        g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
+        g.drawText ("K", 16, 13, 18, 18, juce::Justification::centred, false);
+
+        g.setColour (juce::Colour (console::text));
+        g.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
+        g.drawText ("KEY  DETECTOR", 42, 13, 260, 18, juce::Justification::centredLeft, false);
     };
 
     content.addAndMakeVisible (spectrum);
@@ -162,12 +188,13 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 KeyDetectorAudioProcessorEditor::~KeyDetectorAudioProcessorEditor()
 {
     stopTimer();
+    setLookAndFeel (nullptr);
 }
 
 //==============================================================================
 void KeyDetectorAudioProcessorEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff0d0f14)); // behind the scaled content
+    g.fillAll (juce::Colour (console::bgBottomC)); // behind the scaled content
 }
 
 void KeyDetectorAudioProcessorEditor::resized()

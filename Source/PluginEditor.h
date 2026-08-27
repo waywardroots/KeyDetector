@@ -4,6 +4,7 @@
 
 #include "PluginProcessor.h"
 #include "SpectrumAnalyzer.h"
+#include "ConsoleLookAndFeel.h"
 
 //==============================================================================
 /** GUI: a spectrum analyser, a chroma bar display, the detected key, plus the
@@ -38,6 +39,7 @@ private:
     };
 
     KeyDetectorAudioProcessor& processorRef;
+    ConsoleLookAndFeel consoleLnf;   // declared early so it outlives the widgets
     Content content;
 
     SpectrumDisplay spectrum;

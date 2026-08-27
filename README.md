@@ -51,7 +51,8 @@ KeyDetector/
 │   ├── TempoEstimator.h/.cpp     # audio BPM estimation (onset + autocorrelation)
 │   ├── PluginProcessor.h/.cpp    # audio thread: FIFO → FFT → chroma → publish
 │   ├── PluginEditor.h/.cpp       # GUI + 30 Hz timer polling the processor
-│   └── SpectrumAnalyzer.h/.cpp   # spectrum + chroma + tuner display components
+│   ├── SpectrumAnalyzer.h/.cpp   # spectrum + chroma + tuner display components
+│   └── ConsoleLookAndFeel.h      # dark "mixing console" theme (knobs/LEDs/buttons)
 └── tests/
     ├── ChromaKeyDetectorTest.cpp # pure-C++17 sanity tests (ctest)
     ├── PitchDetectorTest.cpp     # YIN accuracy tests (ctest)
