@@ -43,6 +43,7 @@ private:
     SpectrumDisplay spectrum;
     ChromaDisplay   chroma;
     TunerDisplay    tuner;
+    juce::TextButton spectrumFreezeButton { "Freeze" }; // holds the spectrum display
 
     juce::Label keyLabel;        // big "F# minor"
     juce::Label detailLabel;     // correlation / confidence

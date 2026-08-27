@@ -69,9 +69,10 @@ KeyDetector/
 - **Spectrum display** resamples the magnitude spectrum into one column per pixel
   on a log-frequency axis (interpolating at the low end, peak-aggregating at the
   high end) with fast-attack / slow-release smoothing and a peak-hold trace, so
-  there is uniform detail across 20 Hz – 20 kHz. **Hover** the mouse over the
-  spectrum to snap to the nearest peak and read its note (with octave), frequency
-  and cents:
+  there is uniform detail across 20 Hz – 20 kHz. A **Freeze** button in the top-right
+  of the analyser holds the current trace (handy for inspecting it). **Hover** the
+  mouse over the spectrum to snap to the nearest peak and read its note (with
+  octave), frequency and cents:
 
   ![Spectrum hover](docs/hover.png)
 - **Peak-based chroma (Harmonic Pitch-Class Profile).** Instead of dumping every

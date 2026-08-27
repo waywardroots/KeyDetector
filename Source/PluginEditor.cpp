@@ -140,6 +140,13 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 
     spectrumScratch.reserve ((size_t) KeyDetectorAudioProcessor::numBins);
 
+    // Freeze toggle for the spectrum analyser (holds the current trace so you can
+    // hover/inspect it).  Sits in the top-right corner of the spectrum, on top.
+    spectrumFreezeButton.setClickingTogglesState (true);
+    spectrumFreezeButton.setTooltip ("Freeze the spectrum analyser display");
+    spectrumFreezeButton.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff2bd1a4));
+    content.addAndMakeVisible (spectrumFreezeButton);
+
     // Make the editor resizable (corner grip + host edge-resize), keeping the
     // original aspect ratio so the scaled layout always fits.
     setResizable (true, true);
@@ -219,13 +226,16 @@ void KeyDetectorAudioProcessorEditor::layoutContent()
     chroma.setBounds (area.removeFromBottom (110));
     area.removeFromBottom (10);
     spectrum.setBounds (area);
+    spectrumFreezeButton.setBounds (area.getRight() - 66, area.getY() + 4, 60, 18);
 }
 
 //==============================================================================
 void KeyDetectorAudioProcessorEditor::timerCallback()
 {
-    if (processorRef.copySpectrum (spectrumScratch))
-        spectrum.setSpectrum (spectrumScratch, processorRef.getCurrentSampleRate());
+    // Update the spectrum unless it is frozen (then it holds the current trace).
+    if (! spectrumFreezeButton.getToggleState())
+        if (processorRef.copySpectrum (spectrumScratch))
+            spectrum.setSpectrum (spectrumScratch, processorRef.getCurrentSampleRate());
 
     const auto ch = processorRef.getChromaSnapshot();
     chroma.setChroma (ch);
