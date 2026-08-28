@@ -49,9 +49,9 @@ private:
     int  hoverX    = -1;                    // mouse x while hovering (-1 = none)
     bool hovering  = false;
 
-    // Linear frequency axis 0 Hz .. 30 kHz, dBFS scale with +12 dB of headroom.
-    static constexpr float minFreq = 0.0f;
-    static constexpr float maxFreq = 30000.0f;
+    // Log frequency axis 20 Hz .. 20 kHz, dBFS scale with +12 dB of headroom.
+    static constexpr float minFreq = 20.0f;
+    static constexpr float maxFreq = 20000.0f;
     static constexpr float minDb   = -90.0f;
     static constexpr float maxDb   =  12.0f;
 

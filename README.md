@@ -68,12 +68,12 @@ KeyDetector/
   bins. Low notes are reinforced by their **harmonics** in well-resolved higher
   bins, which keeps octave-collapsed chroma robust.
 - **Spectrum display** resamples the magnitude spectrum into one column per pixel
-  with fast-attack / slow-release smoothing and a peak-hold trace. The axis is a
-  **linear 0 Hz – 30 kHz** frequency scale and a **dBFS** amplitude scale with
-  **+12 dB** of headroom at the top (0 dB is a calibrated full-scale reference; a
-  0 dBFS sine peaks on the 0 dB line). Content above the sample rate's Nyquist
-  (e.g. 24 kHz @ 48 kHz) is naturally blank. **Hover** the mouse over the spectrum
-  to snap to the nearest peak and read its note (with octave), frequency and cents:
+  on a **log 20 Hz – 20 kHz** frequency axis (interpolating at the low end,
+  peak-aggregating at the high end) with fast-attack / slow-release smoothing and a
+  peak-hold trace. The amplitude scale is **dBFS** with **+12 dB** of headroom at
+  the top (0 dB is a calibrated full-scale reference; a 0 dBFS sine peaks on the
+  0 dB line). **Hover** the mouse over the spectrum to snap to the nearest peak and
+  read its note (with octave), frequency and cents:
 
   ![Spectrum hover](docs/hover.png)
 - **Peak-based chroma (Harmonic Pitch-Class Profile).** Instead of dumping every
