@@ -1,15 +1,17 @@
 #include "PluginEditor.h"
+#include "BinaryData.h"
 
 //==============================================================================
 KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
 {
     setLookAndFeel (&consoleLnf);
+    logo = juce::ImageCache::getFromMemory (BinaryData::logo_png, BinaryData::logo_pngSize);
 
     // Everything lives inside `content`, which is laid out at the fixed design size
     // and scaled to fill the (resizable) editor.
     addAndMakeVisible (content);
-    content.onPaint = [] (juce::Graphics& g)
+    content.onPaint = [this] (juce::Graphics& g)
     {
         const int W = designWidth, H = designHeight;
 
@@ -30,16 +32,19 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
         g.setColour (juce::Colour (console::shadow));
         g.fillRect (0, 46, W, 1);
 
-        // Logo mark + wordmark.
-        g.setColour (juce::Colour (console::accent));
-        g.fillRoundedRectangle (16.0f, 13.0f, 18.0f, 18.0f, 3.0f);
-        g.setColour (juce::Colour (0xff101318));
-        g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
-        g.drawText ("K", 16, 13, 18, 18, juce::Justification::centred, false);
+        // Logo image (falls back to a drawn mark if the image failed to load).
+        const juce::Rectangle<float> logoBox (14.0f, 8.0f, 28.0f, 28.0f);
+        if (logo.isValid())
+            g.drawImage (logo, logoBox, juce::RectanglePlacement::centred);
+        else
+        {
+            g.setColour (juce::Colour (console::accent));
+            g.fillRoundedRectangle (logoBox, 3.0f);
+        }
 
         g.setColour (juce::Colour (console::text));
         g.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
-        g.drawText ("KEY  DETECTOR", 42, 13, 260, 18, juce::Justification::centredLeft, false);
+        g.drawText ("KEY  DETECTOR", 50, 13, 260, 18, juce::Justification::centredLeft, false);
     };
 
     content.addAndMakeVisible (spectrum);

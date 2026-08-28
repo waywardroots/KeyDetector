@@ -66,8 +66,14 @@ target_compile_definitions(KeyDetector PUBLIC
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_DISPLAY_SPLASH_SCREEN=0)
 
+# Embed images (logo etc.) so they are compiled into the plugin (no external
+# files needed at runtime).  Drop replacement art into Resources/ with the same
+# file name to swap it.
+juce_add_binary_data(KeyDetectorAssets SOURCES Resources/logo.png)
+
 target_link_libraries(KeyDetector
     PRIVATE
+        KeyDetectorAssets
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC

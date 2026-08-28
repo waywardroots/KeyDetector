@@ -40,6 +40,7 @@ private:
 
     KeyDetectorAudioProcessor& processorRef;
     ConsoleLookAndFeel consoleLnf;   // declared early so it outlives the widgets
+    juce::Image logo;                // embedded logo (loaded in the constructor)
     Content content;
 
     SpectrumDisplay spectrum;
