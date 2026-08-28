@@ -37,10 +37,10 @@ endif()
 # you specifically need it to register as a VSTi in your host.
 # ==============================================================================
 juce_add_plugin(KeyDetector
-    PLUGIN_MANUFACTURER_CODE    Dspx
+    PLUGIN_MANUFACTURER_CODE    Jatc
     PLUGIN_CODE                 Kdet
-    COMPANY_NAME                "DSPExample"
-    BUNDLE_ID                   com.dspexample.keydetector
+    COMPANY_NAME                "JamesandtheCat"
+    BUNDLE_ID                   com.jamesandthecat.keydetector
     IS_SYNTH                    FALSE
     NEEDS_MIDI_INPUT            FALSE
     NEEDS_MIDI_OUTPUT           FALSE
