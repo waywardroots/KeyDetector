@@ -115,7 +115,10 @@ public:
     {
         auto bounds = b.getLocalBounds();
         const float d = 13.0f;
-        auto led = juce::Rectangle<float> (bounds.getX() + 1.0f, bounds.getCentreY() - d * 0.5f, d, d);
+        const bool  hasText = b.getButtonText().isNotEmpty();
+        auto led = hasText
+            ? juce::Rectangle<float> (bounds.getX() + 1.0f, bounds.getCentreY() - d * 0.5f, d, d)
+            : juce::Rectangle<float> (bounds.getCentreX() - d * 0.5f, bounds.getCentreY() - d * 0.5f, d, d);
         const bool on = b.getToggleState();
 
         if (on)
@@ -130,11 +133,14 @@ public:
         g.setColour (juce::Colour (console::edge));
         g.drawEllipse (led, 1.0f);
 
-        g.setColour (juce::Colour (console::text));
-        g.setFont (juce::Font (juce::FontOptions (13.0f)));
-        g.drawText (b.getButtonText(), bounds.getX() + (int) d + 8, bounds.getY(),
-                    bounds.getWidth() - (int) d - 8, bounds.getHeight(),
-                    juce::Justification::centredLeft, false);
+        if (hasText)
+        {
+            g.setColour (juce::Colour (console::text));
+            g.setFont (juce::Font (juce::FontOptions (13.0f)));
+            g.drawText (b.getButtonText(), bounds.getX() + (int) d + 8, bounds.getY(),
+                        bounds.getWidth() - (int) d - 8, bounds.getHeight(),
+                        juce::Justification::centredLeft, false);
+        }
     }
 
     //==============================================================================

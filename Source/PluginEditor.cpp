@@ -54,9 +54,9 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
     content.addAndMakeVisible (keyLabel);
 
     detailLabel.setJustificationType (juce::Justification::centred);
-    detailLabel.setFont (juce::Font (juce::FontOptions (13.0f)));
-    detailLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
-    detailLabel.setText ("waiting for audio...", juce::dontSendNotification);
+    detailLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
+    detailLabel.setColour (juce::Label::textColourId, juce::Colour (console::textDim));
+    detailLabel.setText ("waiting...", juce::dontSendNotification);
     content.addAndMakeVisible (detailLabel);
 
     // Tempo readout (top-right of the header).
@@ -134,35 +134,41 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 
     setWantsKeyboardFocus (true); // so the T / H shortcuts are received
 
-    // --- Controls ---------------------------------------------------------------
+    // --- Controls (bottom strip) -----------------------------------------------
+    // Small screened caption under each control, all on one baseline.
+    auto styleCaption = [this] (juce::Label& l)
+    {
+        l.setJustificationType (juce::Justification::centred);
+        l.setFont (juce::Font (juce::FontOptions (11.0f)));
+        l.setColour (juce::Label::textColourId, juce::Colour (console::textDim));
+        content.addAndMakeVisible (l);
+    };
+
     smoothingSlider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    smoothingSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 60, 18);
+    smoothingSlider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
     content.addAndMakeVisible (smoothingSlider);
     smoothingAttachment = std::make_unique<SliderAttachment> (
         processorRef.apvts, "smoothing", smoothingSlider);
+    styleCaption (smoothingLabel);
 
-    smoothingLabel.setJustificationType (juce::Justification::centred);
-    smoothingLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
-    smoothingLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
-    content.addAndMakeVisible (smoothingLabel);
-
+    freezeButton.setButtonText ({});           // LED only; caption is below
     content.addAndMakeVisible (freezeButton);
     freezeAttachment = std::make_unique<ButtonAttachment> (
         processorRef.apvts, "freeze", freezeButton);
+    styleCaption (freezeLabel);
 
+    resetButton.setButtonText ({});            // push button; caption is below
     resetButton.onClick = [this] { processorRef.requestReset(); };
     content.addAndMakeVisible (resetButton);
+    styleCaption (resetLabel);
 
     // Tuner mode selector (Auto / Pitch / Peak).
     tunerModeBox.addItemList ({ "Auto", "Pitch", "Peak" }, 1);
     content.addAndMakeVisible (tunerModeBox);
     tunerModeAttachment = std::make_unique<ComboBoxAttachment> (
         processorRef.apvts, "tunerMode", tunerModeBox);
-
-    tunerModeLabel.setJustificationType (juce::Justification::centred);
-    tunerModeLabel.setFont (juce::Font (juce::FontOptions (12.0f)));
-    tunerModeLabel.setColour (juce::Label::textColourId, juce::Colours::white.withAlpha (0.6f));
-    content.addAndMakeVisible (tunerModeLabel);
+    styleCaption (tunerModeLabel);
+    tunerModeLabel.setText ("TUNER", juce::dontSendNotification);
 
     spectrumScratch.reserve ((size_t) KeyDetectorAudioProcessor::numBins);
 
@@ -226,25 +232,43 @@ void KeyDetectorAudioProcessorEditor::layoutContent()
 
     area.removeFromTop (40); // header
 
-    // Bottom control strip.
-    auto controls = area.removeFromBottom (72);
+    // Bottom control strip: a row of controls, each vertically centred in its own
+    // column, with all captions aligned on one baseline underneath.
+    auto strip = area.removeFromBottom (76);
     {
-        auto c = controls;
-        auto knob = c.removeFromLeft (90);
-        smoothingLabel.setBounds (knob.removeFromBottom (16));
-        smoothingSlider.setBounds (knob);
+        auto captions = strip.removeFromBottom (14);
+        strip.removeFromBottom (2);
+        auto ctl = strip; // control row
 
-        c.removeFromLeft (16);
-        freezeButton.setBounds (c.removeFromLeft (80).withSizeKeepingCentre (80, 30));
-        resetButton .setBounds (c.removeFromLeft (76).withSizeKeepingCentre (72, 30));
+        const int gap = 8;
+        auto column = [&] (int wdt) -> std::pair<juce::Rectangle<int>, juce::Rectangle<int>>
+        {
+            auto c = ctl.removeFromLeft (wdt);
+            auto p = captions.removeFromLeft (wdt);
+            ctl.removeFromLeft (gap);
+            captions.removeFromLeft (gap);
+            return { c, p };
+        };
 
-        c.removeFromLeft (10);
-        auto tm = c.removeFromLeft (92);
-        tunerModeLabel.setBounds (tm.removeFromBottom (16));
-        tunerModeBox.setBounds (tm.withSizeKeepingCentre (92, 26));
+        auto [sC, sP] = column (66);
+        smoothingSlider.setBounds (sC.withSizeKeepingCentre (46, 46));
+        smoothingLabel.setBounds (sP);
 
-        keyLabel.setBounds (c.removeFromTop (46));
-        detailLabel.setBounds (c);
+        auto [fC, fP] = column (58);
+        freezeButton.setBounds (fC.withSizeKeepingCentre (30, 30));
+        freezeLabel.setBounds (fP);
+
+        auto [rC, rP] = column (58);
+        resetButton.setBounds (rC.withSizeKeepingCentre (46, 26));
+        resetLabel.setBounds (rP);
+
+        auto [tC, tP] = column (94);
+        tunerModeBox.setBounds (tC.withSizeKeepingCentre (92, 26));
+        tunerModeLabel.setBounds (tP);
+
+        // Key column takes the remainder.
+        keyLabel.setBounds (ctl);
+        detailLabel.setBounds (captions);
     }
 
     area.removeFromBottom (10);
@@ -319,15 +343,14 @@ void KeyDetectorAudioProcessorEditor::timerCallback()
     if (chromaSum > 1.0e-4f && est.correlation >= 0.6f)
     {
         keyLabel.setText (est.noteName(), juce::dontSendNotification);
-        detailLabel.setText (
-            "correlation " + juce::String (est.correlation, 2)
-                + "    confidence " + juce::String (juce::roundToInt (est.confidence * 100.0f)) + "%",
-            juce::dontSendNotification);
+        detailLabel.setText ("corr " + juce::String (est.correlation, 2)
+                                 + "  /  conf " + juce::String (juce::roundToInt (est.confidence * 100.0f)) + "%",
+                             juce::dontSendNotification);
     }
     else
     {
         keyLabel.setText ("--", juce::dontSendNotification);
-        detailLabel.setText (chromaSum > 1.0e-4f ? "no clear key" : "waiting for audio...",
+        detailLabel.setText (chromaSum > 1.0e-4f ? "no clear key" : "waiting...",
                              juce::dontSendNotification);
     }
 }

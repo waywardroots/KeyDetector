@@ -54,7 +54,9 @@ private:
     juce::Slider      smoothingSlider;
     juce::ToggleButton freezeButton { "Freeze" };
     juce::TextButton   resetButton  { "Reset" };
-    juce::Label        smoothingLabel { {}, "Smoothing" };
+    juce::Label        smoothingLabel { {}, "SMOOTHING" };
+    juce::Label        freezeLabel    { {}, "FREEZE" };
+    juce::Label        resetLabel     { {}, "RESET" };
 
     juce::ComboBox     tunerModeBox;
     juce::Label        tunerModeLabel { {}, "Tuner" };
