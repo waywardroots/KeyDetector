@@ -44,15 +44,16 @@ private:
 
     std::vector<float> colSmooth;          // per-pixel smoothed magnitude (linear)
     std::vector<float> colPeak;            // per-pixel peak-hold magnitude (linear)
-    float refPeak = 1.0e-6f;               // running normalisation reference
+    float dbRef = 2048.0f;                 // magnitude of a 0 dBFS tone (= fftSize/4)
 
     int  hoverX    = -1;                    // mouse x while hovering (-1 = none)
     bool hovering  = false;
 
-    static constexpr float minFreq = 20.0f;
-    static constexpr float maxFreq = 20000.0f;
-    static constexpr float minDb   = -100.0f;
-    static constexpr float maxDb   =  0.0f;
+    // Linear frequency axis 0 Hz .. 30 kHz, dBFS scale with +12 dB of headroom.
+    static constexpr float minFreq = 0.0f;
+    static constexpr float maxFreq = 30000.0f;
+    static constexpr float minDb   = -90.0f;
+    static constexpr float maxDb   =  12.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectrumDisplay)
 };

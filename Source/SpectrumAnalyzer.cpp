@@ -38,16 +38,14 @@ void SpectrumDisplay::resized()
 
 float SpectrumDisplay::freqToX (float hz) const noexcept
 {
-    const float lo = std::log (minFreq), hi = std::log (maxFreq);
-    const float f  = juce::jlimit (minFreq, maxFreq, hz);
-    return (float) getWidth() * (std::log (f) - lo) / (hi - lo);
+    const float f = juce::jlimit (minFreq, maxFreq, hz);
+    return (float) getWidth() * (f - minFreq) / (maxFreq - minFreq);
 }
 
 float SpectrumDisplay::xToFreq (float x) const noexcept
 {
-    const float lo = std::log (minFreq), hi = std::log (maxFreq);
-    const float t  = juce::jlimit (0.0f, 1.0f, x / (float) juce::jmax (1, getWidth()));
-    return std::exp (lo + t * (hi - lo));
+    const float t = juce::jlimit (0.0f, 1.0f, x / (float) juce::jmax (1, getWidth()));
+    return minFreq + t * (maxFreq - minFreq);
 }
 
 float SpectrumDisplay::dbToY (float db) const noexcept
@@ -71,25 +69,15 @@ void SpectrumDisplay::rebuildColumns()
     const int   numBins = (int) mags.size();
     const float binHz   = (float) (sampleRate / (2.0 * numBins));
 
-    // Running normalisation reference: instant attack, slow release, so the trace
-    // fills the view when there's signal and sinks to the floor on silence.
-    float gpeak = 1.0e-9f;
-    for (int k = 1; k < numBins; ++k)
-    {
-        const float f = k * binHz;
-        if (f >= minFreq && f <= maxFreq)
-            gpeak = juce::jmax (gpeak, mags[(size_t) k]);
-    }
-    refPeak = gpeak > refPeak ? gpeak : (refPeak * 0.9f + gpeak * 0.1f);
-    refPeak = juce::jmax (refPeak, 1.0e-9f);
+    // Fixed 0 dBFS reference: a full-scale sine peaks at ~fftSize/4 = numBins/2.
+    dbRef = juce::jmax (1.0f, (float) numBins * 0.5f);
 
-    const float logLo = std::log (minFreq);
-    const float logHi = std::log (maxFreq);
+    const float df = (maxFreq - minFreq) / (float) w;
 
     for (int x = 0; x < w; ++x)
     {
-        const float fLo = std::exp (logLo + (logHi - logLo) * ((float) x)       / (float) w);
-        const float fHi = std::exp (logLo + (logHi - logLo) * ((float) (x + 1)) / (float) w);
+        const float fLo = minFreq + df * (float) x;
+        const float fHi = minFreq + df * (float) (x + 1);
 
         const int kLo = (int) std::ceil  (fLo / binHz);
         const int kHi = (int) std::floor (fHi / binHz);
@@ -103,8 +91,8 @@ void SpectrumDisplay::rebuildColumns()
         }
         else
         {
-            // Column narrower than the bin spacing (low end): interpolate.
-            const float fc = std::sqrt (fLo * fHi);
+            // Column narrower than the bin spacing: interpolate between bins.
+            const float fc = 0.5f * (fLo + fHi);
             const float bf = fc / binHz;
             int   k0 = juce::jlimit (1, numBins - 2, (int) bf);
             const float fr = juce::jlimit (0.0f, 1.0f, bf - (float) k0);
@@ -131,27 +119,26 @@ void SpectrumDisplay::paint (juce::Graphics& g)
 
     drawScreen (g, bounds);
 
-    // ---- dB grid (horizontal) ---------------------------------------------------
+    // ---- dB grid (horizontal), dBFS with +12 at the top ------------------------
     g.setFont (10.0f);
-    for (int db = 0; db >= -80; db -= 20)
+    for (int db : { 12, 0, -20, -40, -60, -80 })
     {
         const float y = dbToY ((float) db);
-        g.setColour (juce::Colours::white.withAlpha (0.06f));
+        g.setColour (juce::Colours::white.withAlpha (db == 0 ? 0.16f : 0.06f)); // 0 dB brighter
         g.drawHorizontalLine ((int) y, 0.0f, w);
         g.setColour (juce::Colours::white.withAlpha (0.28f));
-        g.drawText (juce::String (db), 2, (int) y + 1, 26, 12, juce::Justification::left, false);
+        g.drawText ((db > 0 ? "+" : "") + juce::String (db), 2, (int) y + 1, 28, 12,
+                    juce::Justification::left, false);
     }
 
-    // ---- frequency grid (vertical) ----------------------------------------------
-    const float labelledFreqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
-    for (float f : labelledFreqs)
+    // ---- frequency grid (vertical), linear 0..30 kHz ---------------------------
+    for (int f = 0; f <= 30000; f += 5000)
     {
-        const float x = freqToX (f);
+        const float x = freqToX ((float) f);
         g.setColour (juce::Colours::white.withAlpha (0.08f));
         g.drawVerticalLine ((int) x, 0.0f, h);
         g.setColour (juce::Colours::white.withAlpha (0.30f));
-        const juce::String txt = f >= 1000.0f ? juce::String ((int) (f / 1000.0f)) + "k"
-                                              : juce::String ((int) f);
+        const juce::String txt = f == 0 ? "0" : juce::String (f / 1000) + "k";
         g.drawText (txt, (int) x + 2, (int) h - 13, 34, 12, juce::Justification::left, false);
     }
 
@@ -160,7 +147,7 @@ void SpectrumDisplay::paint (juce::Graphics& g)
 
     auto magToY = [this] (float linear)
     {
-        const float db = linear > 1.0e-9f ? 20.0f * std::log10 (linear / refPeak) : minDb;
+        const float db = linear > 1.0e-9f ? 20.0f * std::log10 (linear / dbRef) : minDb;
         return dbToY (db);
     };
 
@@ -261,7 +248,7 @@ void SpectrumDisplay::paintHoverReadout (juce::Graphics& g)
 
     if (onPeak)
     {
-        const float db = bestMag > 1.0e-9f ? 20.0f * std::log10 (bestMag / refPeak) : minDb;
+        const float db = bestMag > 1.0e-9f ? 20.0f * std::log10 (bestMag / dbRef) : minDb;
         const float y  = dbToY (db);
         g.setColour (juce::Colour (0xffffc857));
         g.fillEllipse (x - 3.0f, y - 3.0f, 6.0f, 6.0f);
