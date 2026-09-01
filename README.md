@@ -171,6 +171,16 @@ Build artefacts land in
 `build/KeyDetector_artefacts/Release/VST3/Key Detector.vst3` and
 `.../Standalone/Key Detector`.
 
+## License / Copyright
+
+Key Detector is **© 2026 JamesandtheCat. All rights reserved.** The Software is
+licensed, not sold; end‑user use is governed by the **End User License Agreement**
+in [`EULA.md`](EULA.md). It is built with third‑party components (JUCE, the
+Steinberg VST 3 SDK, Apple Audio Units) under their respective licenses — if you
+distribute binaries, make sure you comply with those (e.g. the applicable JUCE and
+VST 3 SDK licenses). The EULA is a template and not legal advice; have a lawyer
+review it before shipping.
+
 ## Windows build (for Ableton Live)
 
 ### About the file type — `.vst3`, not `.dll`

@@ -1,3 +1,8 @@
+// Key Detector - (c) 2026 JamesandtheCat. All rights reserved.
+// This software is licensed, not sold; use is governed by the End User License
+// Agreement (see EULA.md). Unauthorised copying, distribution, or modification is
+// prohibited.
+
 #include "PluginEditor.h"
 #include "BinaryData.h"
 
@@ -44,7 +49,12 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 
         g.setColour (juce::Colour (console::text));
         g.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
-        g.drawText ("KEY  DETECTOR", 50, 13, 260, 18, juce::Justification::centredLeft, false);
+        g.drawText ("KEY  DETECTOR", 50, 13, 150, 18, juce::Justification::centredLeft, false);
+
+        g.setColour (juce::Colour (console::textDim));
+        g.setFont (juce::Font (juce::FontOptions (9.5f)));
+        g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 JamesandtheCat"),
+                    182, 15, 150, 14, juce::Justification::centredLeft, false);
     };
 
     content.addAndMakeVisible (spectrum);

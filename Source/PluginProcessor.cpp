@@ -1,3 +1,8 @@
+// Key Detector - (c) 2026 JamesandtheCat. All rights reserved.
+// This software is licensed, not sold; use is governed by the End User License
+// Agreement (see EULA.md). Unauthorised copying, distribution, or modification is
+// prohibited.
+
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
