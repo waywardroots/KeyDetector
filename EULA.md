@@ -1,11 +1,11 @@
 # End User License Agreement (EULA)
 
 **Key Detector** — audio analysis plug‑in
-Copyright © 2026 JamesandtheCat. All rights reserved.
+Copyright © 2026 AudioFuzz. All rights reserved.
 
 > **IMPORTANT — READ CAREFULLY.** This End User License Agreement ("Agreement")
 > is a legal agreement between you (either an individual or a single entity, "you"
-> or "Licensee") and **JamesandtheCat** ("Licensor", "we", "us") for the software
+> or "Licensee") and **AudioFuzz** ("Licensor", "we", "us") for the software
 > product identified above, which includes the plug‑in binaries (VST3, AU,
 > Standalone), associated media, and any accompanying documentation (collectively,
 > the "Software"). By downloading, installing, copying, or otherwise using the
@@ -139,7 +139,7 @@ assign this Agreement without Licensor's prior written consent.
 
 ---
 
-**Contact:** JamesandtheCat — [INSERT CONTACT EMAIL / WEBSITE]
+**Contact:** AudioFuzz — [INSERT CONTACT EMAIL / WEBSITE]
 
 _This document is a template provided for convenience and does not constitute
 legal advice. Consult a qualified attorney to ensure it meets your needs and the
