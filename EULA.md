@@ -68,18 +68,73 @@ Licensor.
 ## 5. Third‑Party Components
 
 The Software incorporates or is built with third‑party components that are subject
-to their own license terms, including but not limited to:
+to their own license terms, including but not limited to **JUCE** (© Raw Material
+Software Limited, used under the applicable JUCE licence), the **Steinberg VST 3
+SDK**, and, on Apple platforms, the **Audio Unit** technology of Apple Inc. Your
+rights in such components are governed by their respective licenses. Nothing in
+this Agreement limits any rights you may have under those third‑party licenses, and
+nothing in this Agreement grants you any rights in those components beyond those
+granted by their respective licensors.
 
-- **JUCE** (© Raw Material Software Limited) — used under the applicable JUCE
-  licence; and
-- the **Steinberg VST 3 SDK** (© Steinberg Media Technologies GmbH) — VST is a
-  trademark of Steinberg Media Technologies GmbH; and, on Apple platforms, the
-  **Audio Unit** technology of Apple Inc.
+### 5.1 Steinberg VST 3 SDK
 
-Your rights in such components are governed by their respective licenses. Nothing
-in this Agreement limits any rights you may have under those third‑party licenses,
-and nothing in this Agreement grants you any rights in those components beyond
-those granted by their respective licensors.
+VST is a trademark of Steinberg Media Technologies GmbH, registered in Europe and
+other countries. The VST 3 SDK is **not** licensed under the MIT license; it is
+licensed under the **Steinberg VST 3 License** or, alternatively, the **GNU General
+Public License (GPL) Version 3**, and certain components (the SDK `base` library)
+are made available under a BSD‑style license. The following notices are reproduced
+as required for attribution:
+
+```
+LICENSE
+(c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+
+This Software Development Kit is licensed under the terms of the Steinberg VST3
+License, or alternatively under the terms of the General Public License (GPL)
+Version 3. You may use the Software Development Kit according to either of these
+licenses as it is most appropriate for your project on a case-by-case basis
+(commercial or not).
+
+Details of the GPL v3 license: www.gnu.org/licenses/gpl-3.0.html
+Steinberg VST usage guidelines (VST, VST logo, VST compatible logos):
+https://steinbergmedia.github.io/vst3_dev_portal/pages/VST+3+Licensing/Usage+guidelines.html
+```
+
+BSD‑style license applicable to the SDK `base` component:
+
+```
+LICENSE
+(c) 2024, Steinberg Media Technologies GmbH, All Rights Reserved
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+  * Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+  * Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+  * Neither the name of the Steinberg Media Technologies nor the names of its
+    contributors may be used to endorse or promote products derived from this
+    software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
+> Note: the above are the **actual** Steinberg VST 3 SDK notices. If you distribute
+> a closed‑source commercial product, you must comply with the Steinberg VST 3
+> License (which may require a signed agreement with Steinberg) rather than the GPL,
+> and you must observe Steinberg's VST trademark usage guidelines. This is not legal
+> advice — confirm your obligations with Steinberg and/or a lawyer.
 
 ## 6. Updates and Support
 
