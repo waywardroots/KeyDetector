@@ -49,12 +49,13 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
 
         g.setColour (juce::Colour (console::text));
         g.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
-        g.drawText ("KEY  DETECTOR", 50, 13, 150, 18, juce::Justification::centredLeft, false);
+        g.drawText ("KEY  DETECTOR", 50, 13, 200, 18, juce::Justification::centredLeft, false);
 
+        // Copyright, bottom-right corner (clear of the resize grip).
         g.setColour (juce::Colour (console::textDim));
         g.setFont (juce::Font (juce::FontOptions (9.5f)));
         g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 AudioFuzz"),
-                    182, 15, 150, 14, juce::Justification::centredLeft, false);
+                    W - 176, H - 13, 150, 11, juce::Justification::centredRight, false);
     };
 
     content.addAndMakeVisible (spectrum);
