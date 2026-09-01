@@ -173,13 +173,14 @@ Build artefacts land in
 
 ## License / Copyright
 
-Key Detector is **© 2026 JamesandtheCat. All rights reserved.** The Software is
-licensed, not sold; end‑user use is governed by the **End User License Agreement**
-in [`EULA.md`](EULA.md). It is built with third‑party components (JUCE, the
-Steinberg VST 3 SDK, Apple Audio Units) under their respective licenses — if you
-distribute binaries, make sure you comply with those (e.g. the applicable JUCE and
-VST 3 SDK licenses). The EULA is a template and not legal advice; have a lawyer
-review it before shipping.
+Key Detector is **developed, owned, and licensed by AudioFuzz**, and released in
+partnership with, and under the **JamesandtheCat** brand. **© 2026 AudioFuzz. All
+rights reserved.** The Software is licensed, not sold; end‑user use is governed by
+the **End User License Agreement** in [`EULA.md`](EULA.md). It is built with
+third‑party components (JUCE, the Steinberg VST 3 SDK, Apple Audio Units) under
+their respective licenses — if you distribute binaries, make sure you comply with
+those (e.g. the applicable JUCE and VST 3 SDK licenses). The EULA is a template and
+not legal advice; have a lawyer review it before shipping.
 
 ## Windows build (for Ableton Live)
 

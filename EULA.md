@@ -3,6 +3,9 @@
 **Key Detector** — audio analysis plug‑in
 Copyright © 2026 AudioFuzz. All rights reserved.
 
+Key Detector is developed, owned, and licensed by **AudioFuzz**, and is released
+in partnership with, and under the **JamesandtheCat** brand.
+
 > **IMPORTANT — READ CAREFULLY.** This End User License Agreement ("Agreement")
 > is a legal agreement between you (either an individual or a single entity, "you"
 > or "Licensee") and **AudioFuzz** ("Licensor", "we", "us") for the software
@@ -59,11 +62,12 @@ The Software is **licensed, not sold.** Licensor and its licensors retain all
 right, title, and interest in and to the Software, including all copyrights,
 trademarks, trade secrets, patents, and other intellectual property rights therein
 and thereto. This includes, without limitation, the source code, object code,
-graphical user interface, artwork, logos, and the name "Key Detector" and
-"JamesandtheCat". No rights are granted to you other than as expressly set forth in
-this Agreement, and all rights not expressly granted are reserved by Licensor. This
-Agreement does not grant you any rights to any trademarks or service marks of
-Licensor.
+graphical user interface, artwork, and logos. The names and marks "Key Detector"
+and "AudioFuzz", and the "JamesandtheCat" brand and logo, are trademarks or marks
+of Licensor and/or its partners. No rights are granted to you other than as
+expressly set forth in this Agreement, and all rights not expressly granted are
+reserved by Licensor. This Agreement does not grant you any rights to any
+trademarks or service marks of Licensor or its partners.
 
 ## 5. Third‑Party Components
 
