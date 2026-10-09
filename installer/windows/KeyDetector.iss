@@ -1,0 +1,97 @@
+; ============================================================================
+;  Key Detector - Windows installer  (Inno Setup 6)
+;  (c) 2026 Fuzzy Audio LLC
+; ----------------------------------------------------------------------------
+;  Builds a signed-ready setup .exe that installs the VST3 plug-in (and, if
+;  present, the Standalone app).  Inno Setup is free: https://jrsoftware.org
+;
+;  USAGE (run from the repo root on Windows):
+;     1. Download the "KeyDetector-VST3-Windows" artifact from the GitHub
+;        Actions run and unzip it so you have:
+;            installer\windows\artifacts\Key Detector.vst3\   (the bundle folder)
+;        Optionally also drop a Standalone build there:
+;            installer\windows\artifacts\Key Detector.exe
+;     2. Compile:
+;            iscc /DAppVersion=1.0.0 installer\windows\KeyDetector.iss
+;        The finished installer lands in installer\windows\output\.
+;
+;  The license shown by the wizard is the canonical Fuzzy Audio EULA
+;  (..\EULA.rtf, generated from the signed PDF).
+; ============================================================================
+
+#define AppName      "Key Detector"
+#define AppPublisher "Fuzzy Audio LLC"
+#define AppURL       "https://fuzzyaudio.example"      ; TODO: real website
+#define AppExe       "Key Detector.exe"
+
+; Version can be overridden on the command line:  iscc /DAppVersion=1.2.3 ...
+#ifndef AppVersion
+  #define AppVersion "1.0.0"
+#endif
+
+; Where the built plug-in/app live, relative to this .iss file.
+#ifndef ArtifactsDir
+  #define ArtifactsDir "artifacts"
+#endif
+#define Vst3Src       ArtifactsDir + "\" + AppName + ".vst3"
+#define StandaloneSrc ArtifactsDir + "\" + AppExe
+
+; Detect at compile time whether a Standalone build was provided, so the
+; Standalone component/files/icons are only emitted when the .exe is present.
+#define HaveStandalone FileExists(AddBackslash(SourcePath) + StandaloneSrc)
+
+[Setup]
+; AppId uniquely identifies the app for upgrades/uninstall - do NOT change it.
+AppId={{7DDBC97F-CC61-4FAB-8D4B-59107465C6AF}
+AppName={#AppName}
+AppVersion={#AppVersion}
+AppPublisher={#AppPublisher}
+AppPublisherURL={#AppURL}
+AppCopyright=Copyright (C) 2026 Fuzzy Audio LLC
+VersionInfoVersion={#AppVersion}
+DefaultDirName={autopf}\Fuzzy Audio\{#AppName}
+DefaultGroupName=Fuzzy Audio\{#AppName}
+DisableProgramGroupPage=yes
+LicenseFile=..\EULA.rtf
+OutputDir=output
+OutputBaseFilename=KeyDetector-{#AppVersion}-Windows-x64
+Compression=lzma2/max
+SolidCompression=yes
+WizardStyle=modern
+; VST3 goes to the shared Common Files\VST3 folder, which requires admin rights.
+PrivilegesRequired=admin
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
+UninstallDisplayName={#AppName} {#AppVersion}
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Types]
+Name: "full";   Description: "Full installation"
+Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+[Components]
+Name: "vst3"; Description: "VST3 plug-in (64-bit)"; Types: full custom; Flags: fixed
+#if HaveStandalone
+Name: "standalone"; Description: "Standalone application"; Types: full custom
+#endif
+
+[Files]
+; --- VST3 bundle -> C:\Program Files\Common Files\VST3\Key Detector.vst3 ------
+Source: "{#Vst3Src}\*"; DestDir: "{commoncf64}\VST3\{#AppName}.vst3"; \
+    Components: vst3; Flags: recursesubdirs createallsubdirs ignoreversion
+#if HaveStandalone
+; --- Standalone application -> {app} -----------------------------------------
+Source: "{#StandaloneSrc}"; DestDir: "{app}"; Components: standalone; Flags: ignoreversion
+#endif
+
+[Icons]
+#if HaveStandalone
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; Components: standalone
+Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
+#endif
+
+[UninstallDelete]
+; Remove the (now empty) VST3 bundle folder on uninstall.
+Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"

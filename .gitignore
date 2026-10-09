@@ -4,6 +4,11 @@
 build/
 cmake-build-*/
 
+# Installer staging / compiled installers (place downloaded CI artifacts here)
+/installer/*/artifacts/
+/installer/*/build/
+/installer/*/output/
+
 # Local JUCE checkout (fetched automatically by CMake)
 /JUCE/
 

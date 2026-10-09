@@ -6,10 +6,13 @@ shows during setup lives here so both platforms draw from a single source.
 
 ## Contents
 
-| File        | Format     | Used by                                                      |
-|-------------|------------|-------------------------------------------------------------|
-| `EULA.txt`  | Plain text (ASCII) | NSIS `LicenseData`, Inno Setup `LicenseFile`, macOS `productbuild` `<license>` |
-| `EULA.rtf`  | Rich text  | WiX `WixUILicenseRtf`, Inno Setup `LicenseFile`, macOS `.pkg` license (formatted) |
+| Path                      | Purpose                                                           |
+|---------------------------|------------------------------------------------------------------|
+| `EULA.txt`                | License text, pure ASCII (NSIS / Inno / macOS `productbuild`)     |
+| `EULA.rtf`                | License text, rich text (WiX / Inno / macOS `.pkg` formatted)     |
+| `make_license_files.py`   | Regenerates `EULA.txt` / `EULA.rtf` from the signed PDF           |
+| `windows/KeyDetector.iss` | Inno Setup 6 script -> Windows `setup.exe`                        |
+| `macos/build_pkg.sh`      | `pkgbuild` + `productbuild` script -> macOS `.pkg`                |
 
 The **canonical EULA** is the signed PDF supplied by Fuzzy Audio LLC:
 [`../End User License Agreement - FuzzyAudio - Key Detector.pdf`](../End%20User%20License%20Agreement%20-%20FuzzyAudio%20-%20Key%20Detector.pdf).
@@ -26,37 +29,48 @@ both files. `EULA.txt` is normalized to **pure ASCII** so it renders correctly i
 every installer's license box regardless of code page. The generated text is
 verified word-for-word against the PDF (2730 words, exact match).
 
-## Planned installers
+## Building the installers
 
-### Windows (`.exe`)
-Recommended tooling: **Inno Setup** (free, simple) or **WiX Toolset** (MSI).
-The installer should place the built artifacts in the standard locations:
+Both installers consume the plug-ins built by CI. Download the artifact from the
+relevant GitHub Actions run and unzip it into an `artifacts/` folder next to the
+script (these folders are git-ignored).
 
-- VST3  -> `C:\Program Files\Common Files\VST3\Key Detector.vst3`
-- Standalone -> `C:\Program Files\Fuzzy Audio\Key Detector\Key Detector.exe`
+### Windows (`installer/windows/KeyDetector.iss`, Inno Setup 6.3+)
+Stage the build, then compile with the Inno Setup command-line compiler `iscc`:
 
-The license page reads `EULA.rtf` (Inno/WiX) or `EULA.txt` (NSIS). The signed
-VST3/Standalone binaries come from the Windows CI job
-(`.github/workflows/windows-vst3.yml`).
+```
+installer\windows\artifacts\Key Detector.vst3\    (from "KeyDetector-VST3-Windows")
+installer\windows\artifacts\Key Detector.exe      (optional Standalone)
 
-### macOS (`.pkg`)
-Recommended tooling: **`pkgbuild` + `productbuild`**, producing a distribution
-`.pkg` with the EULA shown via the distribution XML `<license file="EULA.txt"/>`
-(or `EULA.rtf`). Component install locations:
+iscc /DAppVersion=1.0.0 installer\windows\KeyDetector.iss
+```
 
-- AU   -> `/Library/Audio/Plug-Ins/Components/Key Detector.component`
-- VST3 -> `/Library/Audio/Plug-Ins/VST3/Key Detector.vst3`
-- Standalone -> `/Applications/Key Detector.app`
+Output: `installer\windows\output\KeyDetector-1.0.0-Windows-x64.exe`. It installs
+the VST3 to `C:\Program Files\Common Files\VST3\Key Detector.vst3` (and the
+Standalone to `C:\Program Files\Fuzzy Audio\Key Detector\` if staged), showing
+`EULA.rtf` on the license page. The Standalone component appears only when the
+`.exe` is present at compile time.
 
-The universal (arm64 + x86_64) binaries come from the macOS CI job
-(`.github/workflows/macos-au-vst3.yml`). For public distribution the `.pkg`
-should be **signed** ("Developer ID Installer") and **notarized**.
+### macOS (`installer/macos/build_pkg.sh`, `pkgbuild` + `productbuild`)
+Stage the build, then run the script with the version:
+
+```
+installer/macos/artifacts/Key Detector.component  (AU)   from "KeyDetector-macOS-AU-VST3"
+installer/macos/artifacts/Key Detector.vst3       (VST3)
+installer/macos/artifacts/Key Detector.app        (optional Standalone)
+
+installer/macos/build_pkg.sh 1.0.0
+```
+
+Output: `installer/macos/output/KeyDetector-1.0.0-macOS.pkg`. It installs AU to
+`/Library/Audio/Plug-Ins/Components`, VST3 to `/Library/Audio/Plug-Ins/VST3`
+(and the Standalone to `/Applications` if staged), showing `EULA.txt` on the
+license pane. Set `APP_SIGN_ID`, `INSTALLER_SIGN_ID`, and `NOTARY_PROFILE` to
+sign and notarize for public distribution (see the header comment in the script).
 
 ## TODO before shipping a real installer
 - [ ] Finalize the bracketed placeholders still present in the signed PDF:
       `[Key Detector]`, `[Colorado]`, and `[download/install]`.
-- [ ] Retire the old `../EULA.md` template (it still names *AudioFuzz* /
-      *JamesandtheCat* and is superseded by the Fuzzy Audio LLC PDF).
-- [ ] Add the Inno/WiX script under `installer/windows/`.
-- [ ] Add the `pkgbuild`/`productbuild` script under `installer/macos/`.
-- [ ] Wire code signing (Windows Authenticode, macOS Developer ID + notarization).
+- [ ] Set the real `AppURL` in `windows/KeyDetector.iss`.
+- [ ] Wire code signing (Windows Authenticode via `signtool`; macOS Developer ID
+      + notarization via the env vars above).
