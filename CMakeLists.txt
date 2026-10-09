@@ -39,7 +39,7 @@ endif()
 juce_add_plugin(KeyDetector
     PLUGIN_MANUFACTURER_CODE    Jatc
     PLUGIN_CODE                 Kdet
-    COMPANY_NAME                "JamesandtheCat"
+    COMPANY_NAME                "Fuzzy Audio"
     BUNDLE_ID                   com.jamesandthecat.keydetector
     IS_SYNTH                    FALSE
     NEEDS_MIDI_INPUT            FALSE

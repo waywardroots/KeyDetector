@@ -54,8 +54,8 @@ KeyDetectorAudioProcessorEditor::KeyDetectorAudioProcessorEditor (KeyDetectorAud
         // Copyright, bottom-right corner (clear of the resize grip).
         g.setColour (juce::Colour (console::textDim));
         g.setFont (juce::Font (juce::FontOptions (9.5f)));
-        g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 AudioFuzz"),
-                    W - 176, H - 13, 150, 11, juce::Justification::centredRight, false);
+        g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Fuzzy Audio"),
+                    W - 196, H - 13, 170, 11, juce::Justification::centredRight, false);
     };
 
     content.addAndMakeVisible (spectrum);
