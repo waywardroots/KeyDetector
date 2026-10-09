@@ -1,17 +1,24 @@
 name: Build macOS AU/VST3
 
 # Builds the plugin on a macOS runner as a Universal binary (Apple Silicon +
-# Intel) in both AudioUnit (.component) and VST3 (.vst3) formats, and uploads them
-# as a downloadable artifact.
+# Intel) in AudioUnit (.component), VST3 (.vst3) and Standalone (.app) formats,
+# then packages a macOS installer (.pkg) with pkgbuild/productbuild and uploads
+# both the raw plugins and the installer as downloadable artifacts.
 #
-# Note: the plugins are NOT code-signed/notarised. On first load macOS Gatekeeper
-# may block them — right-click the file and choose "Open", or clear the quarantine
-# flag:  xattr -dr com.apple.quarantine "Key Detector.component" "Key Detector.vst3"
+# Note: the binaries and the .pkg are NOT code-signed/notarised. On first load
+# macOS Gatekeeper may block them - right-click and choose "Open", or clear the
+# quarantine flag, e.g.:
+#   sudo xattr -dr com.apple.quarantine "/Library/Audio/Plug-Ins/VST3/Key Detector.vst3"
+# To sign/notarise, set APP_SIGN_ID / INSTALLER_SIGN_ID / NOTARY_PROFILE for the
+# "Build installer" step (see installer/macos/build_pkg.sh).
 
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
+env:
+  VERSION: "1.0.0"     # installer version; bump when you cut a release
 
 jobs:
   macos-au-vst3:
@@ -29,8 +36,8 @@ jobs:
           -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13
           -DKEYDETECTOR_BUILD_TESTS=OFF
 
-      - name: Build (Release)
-        run: cmake --build build --config Release --target KeyDetector_AU KeyDetector_VST3
+      - name: Build (Release) - AU + VST3 + Standalone
+        run: cmake --build build --config Release --target KeyDetector_AU KeyDetector_VST3 KeyDetector_Standalone
 
       - name: Collect plugins
         run: |
@@ -40,9 +47,26 @@ jobs:
           echo "=== verify universal (arm64 + x86_64) ==="
           lipo -archs "artifact/Key Detector.vst3/Contents/MacOS/Key Detector" || true
 
-      - name: Upload macOS artifact
+      - name: Stage artifacts for the installer
+        run: |
+          mkdir -p installer/macos/artifacts
+          cp -R "build/KeyDetector_artefacts/Release/AU/Key Detector.component" installer/macos/artifacts/
+          cp -R "build/KeyDetector_artefacts/Release/VST3/Key Detector.vst3" installer/macos/artifacts/
+          cp -R "build/KeyDetector_artefacts/Release/Standalone/Key Detector.app" installer/macos/artifacts/
+
+      - name: Build installer (.pkg)
+        run: bash installer/macos/build_pkg.sh "$VERSION"
+
+      - name: Upload macOS plugins artifact
         uses: actions/upload-artifact@v4
         with:
           name: KeyDetector-macOS-AU-VST3
           path: artifact
+          if-no-files-found: error
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyDetector-macOS-Installer
+          path: installer/macos/output/*.pkg
           if-no-files-found: error

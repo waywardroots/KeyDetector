@@ -1,7 +1,8 @@
 name: Build Windows VST3
 
 # Builds the plugin on a Windows runner with MSVC (the officially supported JUCE
-# toolchain) and uploads the .vst3 as a downloadable artifact.
+# toolchain), then packages a Windows installer (.exe) with Inno Setup and uploads
+# both the raw .vst3 and the installer as downloadable artifacts.
 #
 # We use Ninja + the MSVC dev environment rather than a pinned "Visual Studio NN"
 # generator, so the build doesn't break when GitHub bumps the runner image to a
@@ -11,6 +12,9 @@ on:
   push:
     branches: [ main, master ]
   workflow_dispatch:   # lets you run it manually from the Actions tab
+
+env:
+  VERSION: "1.0.0"     # installer version; bump when you cut a release
 
 jobs:
   windows-vst3:
@@ -30,12 +34,34 @@ jobs:
         # automatically via FetchContent.
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DKEYDETECTOR_BUILD_TESTS=OFF
 
-      - name: Build (Release)
-        run: cmake --build build --target KeyDetector_VST3
+      - name: Build (Release) - VST3 + Standalone
+        run: cmake --build build --target KeyDetector_VST3 KeyDetector_Standalone
+
+      - name: Stage artifacts for the installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path installer/windows/artifacts | Out-Null
+          Copy-Item -Recurse -Force "build/KeyDetector_artefacts/Release/VST3/Key Detector.vst3" installer/windows/artifacts/
+          Copy-Item -Force "build/KeyDetector_artefacts/Release/Standalone/Key Detector.exe" installer/windows/artifacts/
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer (.exe)
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" installer\windows\KeyDetector.iss
 
       - name: Upload VST3 artifact
         uses: actions/upload-artifact@v4
         with:
           name: KeyDetector-VST3-Windows
           path: build/KeyDetector_artefacts/Release/VST3/Key Detector.vst3
+          if-no-files-found: error
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: KeyDetector-Windows-Installer
+          path: installer/windows/output/*.exe
           if-no-files-found: error
