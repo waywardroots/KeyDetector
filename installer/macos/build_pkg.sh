@@ -39,6 +39,7 @@ TITLE="Key Detector"
 AU_SRC="$ART/$APP_NAME.component"
 VST3_SRC="$ART/$APP_NAME.vst3"
 APP_SRC="$ART/$APP_NAME.app"
+AAX_SRC="$ART/$APP_NAME.aaxplugin"
 
 rm -rf "$BUILD" "$OUT"
 mkdir -p "$BUILD" "$OUT"
@@ -69,14 +70,16 @@ build_component () {
   eval "$__outvar=\"\$pkg\""
 }
 
-AU_PKG=""; VST3_PKG=""; APP_PKG=""
-build_component "$AU_SRC"   "/Library/Audio/Plug-Ins/Components" "au"         AU_PKG
-build_component "$VST3_SRC" "/Library/Audio/Plug-Ins/VST3"       "vst3"       VST3_PKG
-build_component "$APP_SRC"  "/Applications"                      "standalone" APP_PKG
+AU_PKG=""; VST3_PKG=""; APP_PKG=""; AAX_PKG=""
+build_component "$AU_SRC"   "/Library/Audio/Plug-Ins/Components"            "au"         AU_PKG
+build_component "$VST3_SRC" "/Library/Audio/Plug-Ins/VST3"                  "vst3"       VST3_PKG
+build_component "$APP_SRC"  "/Applications"                                 "standalone" APP_PKG
+# AAX (Pro Tools) - only packaged if you staged a (wraptool-signed) .aaxplugin
+build_component "$AAX_SRC"  "/Library/Application Support/Avid/Audio/Plug-Ins" "aax"     AAX_PKG
 
-if [[ -z "$AU_PKG$VST3_PKG$APP_PKG" ]]; then
+if [[ -z "$AU_PKG$VST3_PKG$APP_PKG$AAX_PKG" ]]; then
   echo "ERROR: no artifacts found in $ART" >&2
-  echo "       expected '$APP_NAME.component', '$APP_NAME.vst3' and/or '$APP_NAME.app'" >&2
+  echo "       expected '$APP_NAME.component', '$APP_NAME.vst3', '$APP_NAME.app' and/or '$APP_NAME.aaxplugin'" >&2
   exit 1
 fi
 
@@ -92,6 +95,7 @@ DIST="$BUILD/distribution.xml"
   echo '  <choices-outline>'
   [[ -n "$AU_PKG"   ]] && echo '    <line choice="au"/>'
   [[ -n "$VST3_PKG" ]] && echo '    <line choice="vst3"/>'
+  [[ -n "$AAX_PKG"  ]] && echo '    <line choice="aax"/>'
   [[ -n "$APP_PKG"  ]] && echo '    <line choice="standalone"/>'
   echo '  </choices-outline>'
   if [[ -n "$AU_PKG" ]]; then
@@ -105,6 +109,12 @@ DIST="$BUILD/distribution.xml"
     echo "    <pkg-ref id=\"$PKGID.vst3\"/>"
     echo '  </choice>'
     echo "  <pkg-ref id=\"$PKGID.vst3\" version=\"$VERSION\" onConclusion=\"none\">$(basename "$VST3_PKG")</pkg-ref>"
+  fi
+  if [[ -n "$AAX_PKG" ]]; then
+    echo '  <choice id="aax" title="AAX (Pro Tools)">'
+    echo "    <pkg-ref id=\"$PKGID.aax\"/>"
+    echo '  </choice>'
+    echo "  <pkg-ref id=\"$PKGID.aax\" version=\"$VERSION\" onConclusion=\"none\">$(basename "$AAX_PKG")</pkg-ref>"
   fi
   if [[ -n "$APP_PKG" ]]; then
     echo '  <choice id="standalone" title="Standalone application">'

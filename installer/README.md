@@ -68,9 +68,46 @@ Output: `installer/macos/output/KeyDetector-1.0.0-macOS.pkg`. It installs AU to
 license pane. Set `APP_SIGN_ID`, `INSTALLER_SIGN_ID`, and `NOTARY_PROFILE` to
 sign and notarize for public distribution (see the header comment in the script).
 
+## AAX (Pro Tools) support
+
+AAX is **opt-in** and has two requirements the other formats don't:
+
+1. **Avid AAX SDK** - obtain it by registering at <https://developer.avid.com>.
+   It is proprietary and is *not* in this repo. Enable the AAX build by pointing
+   CMake at your local copy:
+
+   ```
+   cmake -B build -G <gen> -DKEYDETECTOR_AAX_SDK_PATH="/path/to/aax-sdk"
+   cmake --build build --config Release --target KeyDetector_AAX
+   ```
+   (or set the `AAX_SDK_PATH` environment variable). With no SDK path the build
+   is unchanged (AU/VST3/Standalone only).
+
+2. **PACE signing** - retail Pro Tools only loads an AAX plug-in that has been
+   signed with PACE's `wraptool`, using the developer/distribution certificate
+   Avid issues you. Sign the freshly built bundle before packaging, e.g.:
+
+   ```
+   wraptool sign --verbose --account <id> --wcguid <guid> \
+     --signid "Developer ID Application: ..." \
+     --in  "build/KeyDetector_artefacts/Release/AAX/Key Detector.aaxplugin" \
+     --out "installer/<os>/artifacts/Key Detector.aaxplugin"
+   ```
+   An unsigned `.aaxplugin` loads only in a Pro Tools *Developer* build.
+
+Once a signed `Key Detector.aaxplugin` is staged in the `artifacts/` folder, both
+installers pick it up automatically:
+- Windows -> `C:\Program Files\Common Files\Avid\Audio\Plug-Ins\Key Detector.aaxplugin`
+- macOS   -> `/Library/Application Support/Avid/Audio/Plug-Ins/Key Detector.aaxplugin`
+
+CI does **not** build AAX (the SDK cannot be shipped in the repo). To automate it,
+add the SDK as a private submodule or an encrypted CI secret, set
+`KEYDETECTOR_AAX_SDK_PATH`, and add a `wraptool` signing step with your PACE
+credentials stored as GitHub secrets.
+
 ## TODO before shipping a real installer
 - [ ] Finalize the bracketed placeholders still present in the signed PDF:
       `[Key Detector]`, `[Colorado]`, and `[download/install]`.
 - [ ] Set the real `AppURL` in `windows/KeyDetector.iss`.
 - [ ] Wire code signing (Windows Authenticode via `signtool`; macOS Developer ID
-      + notarization via the env vars above).
+      + notarization via the env vars above; AAX via PACE `wraptool`).

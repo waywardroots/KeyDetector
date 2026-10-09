@@ -28,6 +28,32 @@ else()
 endif()
 
 # ==============================================================================
+# Optional AAX (Pro Tools) support.
+#
+# AAX requires Avid's proprietary AAX SDK, which you must obtain from Avid
+# (https://developer.avid.com) - it cannot be auto-downloaded like JUCE, nor
+# redistributed in this repo.  Point KEYDETECTOR_AAX_SDK_PATH at your local SDK
+# checkout (or set the AAX_SDK_PATH environment variable) to add AAX to the build;
+# leave it unset and the plugin builds AU/VST3/Standalone exactly as before.
+#
+# NOTE: a built .aaxplugin must still be signed with PACE's `wraptool` before
+# retail Pro Tools will load it (see installer/README.md).
+# ==============================================================================
+set(KEYDETECTOR_AAX_SDK_PATH "" CACHE PATH "Path to the Avid AAX SDK (enables the AAX build)")
+if(NOT KEYDETECTOR_AAX_SDK_PATH AND DEFINED ENV{AAX_SDK_PATH})
+    set(KEYDETECTOR_AAX_SDK_PATH "$ENV{AAX_SDK_PATH}")
+endif()
+
+set(KEYDETECTOR_FORMATS AU VST3 Standalone)
+if(KEYDETECTOR_AAX_SDK_PATH AND EXISTS "${KEYDETECTOR_AAX_SDK_PATH}")
+    message(STATUS "KeyDetector: AAX enabled (SDK at ${KEYDETECTOR_AAX_SDK_PATH})")
+    juce_set_aax_sdk_path("${KEYDETECTOR_AAX_SDK_PATH}")
+    list(APPEND KEYDETECTOR_FORMATS AAX)
+else()
+    message(STATUS "KeyDetector: AAX disabled (set KEYDETECTOR_AAX_SDK_PATH to enable)")
+endif()
+
+# ==============================================================================
 # The plugin target.
 #
 # IS_SYNTH is FALSE: a key detector must *receive* audio to analyse, so it is an
@@ -49,7 +75,8 @@ juce_add_plugin(KeyDetector
     COPY_PLUGIN_AFTER_BUILD     FALSE
     VST3_CATEGORIES             "Analyzer" "Fx"
     AU_MAIN_TYPE                "kAudioUnitType_Effect"
-    FORMATS                     AU VST3 Standalone
+    AAX_CATEGORY                "AAX_ePlugInCategory_Effect"
+    FORMATS                     ${KEYDETECTOR_FORMATS}
     PRODUCT_NAME                "Key Detector")
 
 target_sources(KeyDetector PRIVATE

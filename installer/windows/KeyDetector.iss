@@ -35,10 +35,12 @@
 #endif
 #define Vst3Src       ArtifactsDir + "\" + AppName + ".vst3"
 #define StandaloneSrc ArtifactsDir + "\" + AppExe
+#define AaxSrc        ArtifactsDir + "\" + AppName + ".aaxplugin"
 
-; Detect at compile time whether a Standalone build was provided, so the
-; Standalone component/files/icons are only emitted when the .exe is present.
+; Detect at compile time which optional builds were provided, so their
+; component/files/icons are only emitted when the artifact is present.
 #define HaveStandalone FileExists(AddBackslash(SourcePath) + StandaloneSrc)
+#define HaveAax        DirExists(AddBackslash(SourcePath) + AaxSrc)
 
 [Setup]
 ; AppId uniquely identifies the app for upgrades/uninstall - do NOT change it.
@@ -76,6 +78,9 @@ Name: "vst3"; Description: "VST3 plug-in (64-bit)"; Types: full custom; Flags: f
 #if HaveStandalone
 Name: "standalone"; Description: "Standalone application"; Types: full custom
 #endif
+#if HaveAax
+Name: "aax"; Description: "AAX plug-in (Pro Tools)"; Types: full custom
+#endif
 
 [Files]
 ; --- VST3 bundle -> C:\Program Files\Common Files\VST3\Key Detector.vst3 ------
@@ -85,6 +90,11 @@ Source: "{#Vst3Src}\*"; DestDir: "{commoncf64}\VST3\{#AppName}.vst3"; \
 ; --- Standalone application -> {app} -----------------------------------------
 Source: "{#StandaloneSrc}"; DestDir: "{app}"; Components: standalone; Flags: ignoreversion
 #endif
+#if HaveAax
+; --- AAX bundle -> Common Files\Avid\Audio\Plug-Ins\Key Detector.aaxplugin ----
+Source: "{#AaxSrc}\*"; DestDir: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"; \
+    Components: aax; Flags: recursesubdirs createallsubdirs ignoreversion
+#endif
 
 [Icons]
 #if HaveStandalone
@@ -93,5 +103,8 @@ Name: "{group}\Uninstall {#AppName}"; Filename: "{uninstallexe}"
 #endif
 
 [UninstallDelete]
-; Remove the (now empty) VST3 bundle folder on uninstall.
+; Remove the (now empty) bundle folders on uninstall.
 Type: filesandordirs; Name: "{commoncf64}\VST3\{#AppName}.vst3"
+#if HaveAax
+Type: filesandordirs; Name: "{commoncf64}\Avid\Audio\Plug-Ins\{#AppName}.aaxplugin"
+#endif
