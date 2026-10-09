@@ -1,7 +1,7 @@
-// Key Detector - a JamesandtheCat plug-in.  (c) 2026 AudioFuzz. All rights reserved.
+// Key Detector - a Fuzzy Audio plug-in.  (c) 2026 Fuzzy Audio LLC. All rights reserved.
 // This software is licensed, not sold; use is governed by the End User License
-// Agreement (see EULA.md). Unauthorised copying, distribution, or modification is
-// prohibited.
+// Agreement (see the EULA PDF in the repository root). Unauthorised copying,
+// distribution, or modification is prohibited.
 
 #include "TempoEstimator.h"
 
